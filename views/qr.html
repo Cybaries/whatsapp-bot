@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WhatsApp QR Code</title>
+  </head>
+  <body>
+    <h2>Scan QR with WhatsApp</h2>
+    <div id="qr-container">Loading...</div>
+
+    <script>
+      async function fetchQR() {
+        const res = await fetch("/qr");
+        const { image } = await res.json();
+        document.getElementById(
+          "qr-container"
+        ).innerHTML = `<img src="${image}" />`;
+      }
+
+      fetchQR();
+      setInterval(fetchQR, 5000); // Update every 5s
+    </script>
+  </body>
+</html>
