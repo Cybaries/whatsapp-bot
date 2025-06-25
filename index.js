@@ -30,8 +30,9 @@ app.listen(PORT, () => {
 const PREFIX = '!';
 const COOLDOWN_MS = 15 * 1000;
 
-const ALLOWED_USERS = [ '918102490016@s.whatsapp.net', '919523554487@s.whatsapp.net' ];
-const ALLOWED_GROUPS = [ '916299504768-1579795063@g.us' ];
+const ALLOWED_USERS = process.env.ALLOWED_USERS?.split(',') || [];
+const ALLOWED_GROUPS = process.env.ALLOWED_GROUPS?.split(',') || [];
+
 
 const userCooldowns = new Map();
 const userRequestCount = new Map();
@@ -63,6 +64,9 @@ async function startBot() {
 
         if (connection === 'open') {
             console.log('✅ [CONNECTED] WhatsApp connection established!');
+            console.log('✅ Allowed users:', ALLOWED_USERS);
+            console.log('✅ Allowed groups:', ALLOWED_GROUPS);
+
             global.BOT_ID = sock.user.id;
             console.log(`🤖 Bot connected as: ${BOT_ID}`);
 
@@ -84,6 +88,7 @@ async function startBot() {
     });
 
     sock.ev.on('message-reaction', async (reactionUpdate) => {
+        console.log('📩 [RAW REACTION EVENT]:', JSON.stringify(reactionUpdate, null, 2));
         try {
             await handleReaction(sock, reactionUpdate);
         } catch (err) {
