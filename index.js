@@ -85,6 +85,12 @@ async function startBot() {
         }
         if (connection === 'close') {
             console.log('❌ Disconnected:', lastDisconnect?.error?.message || lastDisconnect?.error);
+            if (reason.includes('replaced') || reason.toLowerCase().includes('conflict') || reason.toLowerCase().includes('stream errored')) {
+                console.log('🔄 Detected stale or replaced session. Clearing stored credentials...');
+                await collection.deleteMany({}); // wipe out any old session data
+                console.log('♻️ Restarting bot in 3 seconds...');
+                return setTimeout(startBot, 3000);
+            }
             setTimeout(startBot, 3000);
         }
     });
