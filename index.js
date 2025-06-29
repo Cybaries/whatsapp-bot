@@ -5,21 +5,32 @@ const express = require('express');
 const qrcode = require('qrcode');
 const Bottleneck = require('bottleneck');
 const { logMessage } = require('./utils/logger');
-const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore, fetchLatestBaileysVersion } = require('@iamrony777/baileys');
+const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore } = require('@iamrony777/baileys');
 const handleReaction = require('./utils/reactionhandler');
-const { MongoClient } = require('mongodb');
 const mongo = require('./utils/mongo');
+const connectionHandler = require('./events/connectionHandler');
+const showTyping = require('./middlewares/typingIndicator');
+const stats = require('./services/stats');
+const delay = require('./utils/delay');
+const { isSessionHealthy } = require('./utils/sessionHealth');
+
 let fetch;
 (async () => {
     fetch = (await import('node-fetch')).default;
 })();
-
+let isRestarting = false;
 const app = express();
-
 const PORT = process.env.QR_PORT || 3000;
 let latestQR = '';
 
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'views/qr.html')));
+app.get('/health', (_, res) => {
+    if (global.isReady) {
+        res.status(200).send('✅ Bot is running');
+    } else {
+        res.status(503).send('⏳ Bot not ready');
+    }
+});
 app.get('/qr', async (_, res) => {
     if (!latestQR) return res.json({ image: null });
     res.json({ image: await qrcode.toDataURL(latestQR) });
@@ -35,66 +46,36 @@ const userCooldowns = new Map();
 const userRequestCount = new Map();
 let totalRequests = 0;
 const limiter = new Bottleneck({ minTime: 1500, maxConcurrent: 1 });
-let sock = null;
-global.sock = null;
 
 async function startBot() {
+    if (isRestarting) return;
+    isRestarting = true;
+
     await mongo.init();
     const collection = mongo.getDb().collection(process.env.MONGO_COLLECTION || 'auth');
-
     const { state, saveCreds } = await useMongoDBAuthState(collection);
-    const { version } = await fetchLatestBaileysVersion();
 
-    if (sock?.ws?.readyState !== undefined) {
-        try {
-            await sock.ws.close();
-        } catch (e) {
-            console.warn('⚠️ Error closing existing socket:', e);
-        }
+    if (!isSessionHealthy(state.creds)) {
+        console.warn('⚠️ Invalid or corrupted session detected. Forcing fresh login.');
+        await collection.deleteMany({}); // clears stale session
+        return setTimeout(startBot, 1000); // retry after fresh session
     }
 
-    sock = makeWASocket({
-        version,
+
+    const sock = makeWASocket({
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys),
         },
         printQRInTerminal: false,
-        getMessage: async () => null
+        getMessage: async () => null,
     });
 
     global.BOT_ID = sock.user?.id;
-    global.sock = sock;
-
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect, isNewLogin }) => {
-        if (qr) {
-            latestQR = qr;
-            console.log(`\n📸 Scan QR at: http://localhost:${PORT}`);
-        }
-        if (connection === 'open') {
-            console.log('✅ Connected!');
-            isReady = false;
-            setTimeout(() => { isReady = true; }, 5000);
-            latestQR = '';
-            if (isNewLogin) {
-                sock.sendPresenceUpdate('available');
-                sock.sendMessage(sock.user.id, { text: '🤖 Bot successfully reconnected and is now active.' });
-            }
-        }
-        if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.payload?.message || lastDisconnect?.error?.message || 'unknown';
-            console.log(`❌ Disconnected: ${reason}`);
-            if (reason.includes('replaced') || reason.toLowerCase().includes('conflict') || reason.toLowerCase().includes('stream errored')) {
-                console.log('🔄 Detected stale or replaced session. Clearing stored credentials...');
-                await collection.deleteMany({}); // wipe out any old session data
-                console.log('♻️ Restarting bot in 3 seconds...');
-                return setTimeout(startBot, 3000);
-            }
-            setTimeout(startBot, 3000);
-        }
-    });
+    // ✅ Kaoi-style modular connection logic
+    connectionHandler(sock, latestQR => (latestQR = latestQR), () => startBot());
 
     sock.ev.on('message-reaction', async r => {
         try {
@@ -105,7 +86,8 @@ async function startBot() {
     });
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
-        if (!isReady) return;
+        if (!global.isReady) return;
+
         const msg = messages[ 0 ];
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
@@ -130,14 +112,17 @@ async function startBot() {
 
         limiter.schedule(async () => {
             try {
+                stats.incrementTotal();
+                stats.incrementUser(sender);
                 logMessage({ from, isGroup, command, input });
-                totalRequests++;
-                userRequestCount.set(sender, (userRequestCount.get(sender) || 0) + 1);
-                console.log(`[+] Command from ${from} • You: ${userRequestCount.get(sender)} • Total: ${totalRequests}`);
+
+                console.log(`[+] Command from ${from} • You: ${stats.getUserCount(sender)} • Total: ${stats.getTotal()}`);
 
                 const cmdFile = path.join(__dirname, 'commands', `${command.toLowerCase()}.js`);
                 if (fs.existsSync(cmdFile)) {
-                    await require(cmdFile)(sock, from, input, msg);
+                    await showTyping(sock, from, async () => {
+                        await require(cmdFile)(sock, from, input, msg);
+                    });
                 } else {
                     await sock.sendMessage(from, { text: `❌ Unknown command: ${command}` });
                 }
@@ -147,12 +132,13 @@ async function startBot() {
             }
         });
     });
+    isRestarting = false;
+
 }
 
-// 🔁 Start the bot
 startBot();
 
-// 🛰️ Self-ping to keep alive (Render-specific hack)
+// 🛰️ Keep-alive ping
 setInterval(async () => {
     try {
         const res = await fetch(process.env.PING_URL);
@@ -160,18 +146,4 @@ setInterval(async () => {
     } catch (e) {
         console.error('Ping failed:', e);
     }
-}, 8 * 60 * 1000);  //ping every 8 minutes
-
-// // 🔁 Session refresher: wakes up and syncs session every 30 minutes
-// setInterval(async () => {
-//     if (!global.sock) return;
-//     try {
-//         const groups = await global.sock.groupFetchAllParticipating();
-//         for (const groupId of Object.keys(groups)) {
-//             await global.sock.groupMetadata(groupId); // rehydrate session keys
-//         }
-//         console.log('🛡️ Refreshed encryption sessions');
-//     } catch (e) {
-//         console.warn('⚠️ Session refresh failed:', e.message);
-//     }
-// }, 30 * 60 * 1000);  // every 30 minutes
+}, 8 * 60 * 1000);
