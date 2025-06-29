@@ -127,5 +127,5 @@ if (process.env.PING_URL) {
         fetch(process.env.PING_URL)
             .then(res => console.log(`📡 Pinged self: ${res.status}`))
             .catch(e => console.error('Ping failed:', e));
-    }, 4 * 60 * 1000); // every 4 minutes
+    }, 8 * 60 * 1000); // every 4 minutes
 }
