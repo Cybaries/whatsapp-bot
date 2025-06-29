@@ -7,19 +7,13 @@ module.exports = async (sock, from) => {
  • \`!animequote <anime name>\`  
  • \`!animequote character <character name>\`
 
-2. *!assignroles*  (Under Development)
- • Sets up role assignment message using emoji reactions.
-
-3. *!myrole*  (Under Development)
- • Shows your assigned role in the group.
-
-4. *!ping*  
+2. *!ping*  
  • Tags everyone in a role. Restricted to group admins.
 
-5. *!weather <city>*  
+3. *!weather <city>*  
  • Shows current weather for the given city.
 
-6. *!help*  
+4. *!help*  
  • Shows this help message.
 `;
 
