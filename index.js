@@ -84,7 +84,8 @@ async function startBot() {
             }
         }
         if (connection === 'close') {
-            console.log('❌ Disconnected:', lastDisconnect?.error?.message || lastDisconnect?.error);
+            const reason = lastDisconnect?.error?.output?.payload?.message || lastDisconnect?.error?.message || 'unknown';
+            console.log(`❌ Disconnected: ${reason}`);
             if (reason.includes('replaced') || reason.toLowerCase().includes('conflict') || reason.toLowerCase().includes('stream errored')) {
                 console.log('🔄 Detected stale or replaced session. Clearing stored credentials...');
                 await collection.deleteMany({}); // wipe out any old session data
