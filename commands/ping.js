@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { getSenderId } = require('../utils/helpers');
 
-
 const pingCooldowns = new Map(); // groupId -> lastTimestamp
 
 module.exports = async (sock, from, input, msg) => {
@@ -42,47 +41,34 @@ module.exports = async (sock, from, input, msg) => {
         const mentions = [];
         const failedMentions = [];
 
-        // 🧠 Build mention list safely
+        // 🧠 Build mention list
         for (const p of metadata.participants) {
             const id = p.id;
             if (!id || typeof id !== 'string') {
                 failedMentions.push({ reason: 'Invalid ID', id });
                 continue;
             }
-
-            if (id === botId) {
-                continue; // skip bot
-            }
-
+            if (id === botId) continue; // skip bot
             if (!id.endsWith('@s.whatsapp.net')) {
                 failedMentions.push({ reason: 'Malformed JID', id });
                 continue;
             }
-
             mentions.push(id);
         }
 
-        // 💬 Build visible @mention string
-        const mentionText = mentions.map(id => `@${id.split('@')[ 0 ]}`).join(' ');
-
-        // ✍️ Sender name
+        // 👤 Get sender's WhatsApp name
         let senderName = 'Unknown';
-
         try {
-            const contact = await sock.onWhatsApp(senderId);
-            senderName =
-                contact?.[ 0 ]?.notify ||
-                contact?.[ 0 ]?.name ||
-                senderInfo?.name ||
-                senderId.split('@')[ 0 ];
+            senderName = await sock.getName(senderId);
+            if (!senderName) senderName = senderId.split('@')[ 0 ];
         } catch {
-            senderName = senderInfo?.name || senderId.split('@')[ 0 ];
+            senderName = senderId.split('@')[ 0 ];
         }
 
         const message = input?.trim() || '📢 Attention everyone!';
-        const fullMessage = `${message}\n\n${mentionText}\n\n👤 _~ ${senderName}_`;
+        const fullMessage = `${message}\n\n**[Hidden Tags]**\n\n👤 _~ ${senderName}_`;
 
-        // ✅ Send ping
+        // ✅ Send ping (hidden visible mentions, actual mentions preserved)
         await sock.sendMessage(from, {
             text: fullMessage,
             mentions
@@ -95,7 +81,6 @@ module.exports = async (sock, from, input, msg) => {
             const timestamp = new Date().toISOString();
 
             const logText = failedMentions.map(f => `- ${f.id || 'UNKNOWN'} (${f.reason})`).join('\n');
-
             const fullLog = `[${timestamp}] Group: "${groupName}" (${from}) | Sender: ${senderName} (${senderId})\nFailed to mention:\n${logText}\n\n`;
 
             fs.appendFile(logPath, fullLog, err => {
