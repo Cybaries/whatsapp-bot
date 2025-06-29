@@ -162,16 +162,16 @@ setInterval(async () => {
     }
 }, 8 * 60 * 1000);  //ping every 8 minutes
 
-// 🔁 Session refresher: wakes up and syncs session every 30 minutes
-setInterval(async () => {
-    if (!global.sock) return;
-    try {
-        const groups = await global.sock.groupFetchAllParticipating();
-        for (const groupId of Object.keys(groups)) {
-            await global.sock.groupMetadata(groupId); // rehydrate session keys
-        }
-        console.log('🛡️ Refreshed encryption sessions');
-    } catch (e) {
-        console.warn('⚠️ Session refresh failed:', e.message);
-    }
-}, 30 * 60 * 1000);  // every 30 minutes
+// // 🔁 Session refresher: wakes up and syncs session every 30 minutes
+// setInterval(async () => {
+//     if (!global.sock) return;
+//     try {
+//         const groups = await global.sock.groupFetchAllParticipating();
+//         for (const groupId of Object.keys(groups)) {
+//             await global.sock.groupMetadata(groupId); // rehydrate session keys
+//         }
+//         console.log('🛡️ Refreshed encryption sessions');
+//     } catch (e) {
+//         console.warn('⚠️ Session refresh failed:', e.message);
+//     }
+// }, 30 * 60 * 1000);  // every 30 minutes
