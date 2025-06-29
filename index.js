@@ -8,7 +8,10 @@ const { logMessage } = require('./utils/logger');
 const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore } = require('@iamrony777/baileys');
 const handleReaction = require('./utils/reactionhandler');
 const { MongoClient } = require('mongodb');
-const fetch = require('node-fetch'); // ✅ For pinging self
+let fetch;
+(async () => {
+    fetch = (await import('node-fetch')).default;
+})();
 
 const app = express();
 const PORT = process.env.QR_PORT || 3000;
@@ -122,10 +125,12 @@ async function startBot() {
 startBot();
 
 // 🛰️ Self-ping to keep alive (Render-specific hack)
-if (process.env.PING_URL) {
-    setInterval(() => {
-        fetch(process.env.PING_URL)
-            .then(res => console.log(`📡 Pinged self: ${res.status}`))
-            .catch(e => console.error('Ping failed:', e));
-    }, 8 * 60 * 1000); // every 4 minutes
-}
+setInterval(async () => {
+    try {
+        const res = await fetch(process.env.PING_URL);
+        console.log(`📡 Pinged self: ${res.status}`);
+    } catch (e) {
+        console.error('Ping failed:', e);
+    }
+}, 8 * 60 * 1000);  //ping every 8 minutes
+
