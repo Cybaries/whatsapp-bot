@@ -5,9 +5,10 @@ const express = require('express');
 const qrcode = require('qrcode');
 const Bottleneck = require('bottleneck');
 const { logMessage } = require('./utils/logger');
-const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore } = require('@iamrony777/baileys');
+const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore, fetchLatestBaileysVersion } = require('@iamrony777/baileys');
 const handleReaction = require('./utils/reactionhandler');
 const { MongoClient } = require('mongodb');
+const mongo = require('./utils/mongo');
 let fetch;
 (async () => {
     fetch = (await import('node-fetch')).default;
@@ -34,15 +35,25 @@ const userCooldowns = new Map();
 const userRequestCount = new Map();
 let totalRequests = 0;
 const limiter = new Bottleneck({ minTime: 1500, maxConcurrent: 1 });
+let sock = null;
 
 async function startBot() {
-    const mongo = new MongoClient(process.env.MONGO_URI);
-    await mongo.connect();
-    const collection = mongo.db(process.env.MONGO_DB || 'whatsapp').collection(process.env.MONGO_COLLECTION || 'auth');
+    await mongo.init();
+    const collection = mongo.getDb().collection(process.env.MONGO_COLLECTION || 'auth');
 
     const { state, saveCreds } = await useMongoDBAuthState(collection);
+    const { version } = await fetchLatestBaileysVersion();
 
-    const sock = makeWASocket({
+    if (sock?.ws?.readyState !== undefined) {
+        try {
+            await sock.ws.close();
+        } catch (e) {
+            console.warn('⚠️ Error closing existing socket:', e);
+        }
+    }
+
+    sock = makeWASocket({
+        version,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys),
@@ -55,14 +66,20 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', ({ connection, qr, lastDisconnect }) => {
+    sock.ev.on('connection.update', ({ connection, qr, lastDisconnect, isNewLogin }) => {
         if (qr) {
             latestQR = qr;
             console.log(`\n📸 Scan QR at: http://localhost:${PORT}`);
         }
         if (connection === 'open') {
             console.log('✅ Connected!');
+            isReady = false;
+            setTimeout(() => { isReady = true; }, 5000);
             latestQR = '';
+            if (isNewLogin) {
+                sock.sendPresenceUpdate('available');
+                sock.sendMessage(sock.user.id, { text: '🤖 Bot successfully reconnected and is now active.' });
+            }
         }
         if (connection === 'close') {
             console.log('❌ Disconnected:', lastDisconnect?.error?.message || lastDisconnect?.error);
@@ -79,6 +96,7 @@ async function startBot() {
     });
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
+        if (!isReady) return;
         const msg = messages[ 0 ];
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
@@ -134,4 +152,3 @@ setInterval(async () => {
         console.error('Ping failed:', e);
     }
 }, 8 * 60 * 1000);  //ping every 8 minutes
-
