@@ -14,6 +14,8 @@ let fetch;
 })();
 
 const app = express();
+app.get('/', (_, res) => res.send('✅ Bot is alive'));
+
 const PORT = process.env.QR_PORT || 3000;
 let latestQR = '';
 
