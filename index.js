@@ -5,9 +5,10 @@ const express = require('express');
 const qrcode = require('qrcode');
 const Bottleneck = require('bottleneck');
 const { logMessage } = require('./utils/logger');
-const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore } = require('@iamrony777/baileys'); // ✅ correct lib
+const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore } = require('@iamrony777/baileys');
 const handleReaction = require('./utils/reactionhandler');
 const { MongoClient } = require('mongodb');
+const fetch = require('node-fetch'); // ✅ For pinging self
 
 const app = express();
 const PORT = process.env.QR_PORT || 3000;
@@ -46,7 +47,7 @@ async function startBot() {
         getMessage: async () => null
     });
 
-    global.BOT_ID = sock.user?.id; // ✅ This is now set correctly for use in your ping.js
+    global.BOT_ID = sock.user?.id;
 
     sock.ev.on('creds.update', saveCreds);
 
@@ -75,7 +76,6 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[ 0 ];
-        console.log('📨 Raw message:', JSON.stringify(msg, null, 2));
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
@@ -118,4 +118,14 @@ async function startBot() {
     });
 }
 
+// 🔁 Start the bot
 startBot();
+
+// 🛰️ Self-ping to keep alive (Render-specific hack)
+if (process.env.PING_URL) {
+    setInterval(() => {
+        fetch(process.env.PING_URL)
+            .then(res => console.log(`📡 Pinged self: ${res.status}`))
+            .catch(e => console.error('Ping failed:', e));
+    }, 4 * 60 * 1000); // every 4 minutes
+}
