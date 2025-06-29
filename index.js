@@ -68,7 +68,7 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', ({ connection, qr, lastDisconnect, isNewLogin }) => {
+    sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect, isNewLogin }) => {
         if (qr) {
             latestQR = qr;
             console.log(`\n📸 Scan QR at: http://localhost:${PORT}`);
