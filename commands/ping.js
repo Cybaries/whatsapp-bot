@@ -65,8 +65,8 @@ module.exports = async (sock, from, input, msg) => {
             senderName = senderId.split('@')[ 0 ];
         }
 
-        const message = input?.trim() || '📢 Attention everyone!';
-        const fullMessage = `${message}\n\n**[Hidden Tags]**\n\n👤 _~ ${senderName}_`;
+        const message = input?.trim()
+        const fullMessage = `📢 Attention everyone!\n\n${message}\n\n**[Hidden Tags]**\n\n👤 _~ ${senderName}`;
 
         // ✅ Send ping (hidden visible mentions, actual mentions preserved)
         await sock.sendMessage(from, {
