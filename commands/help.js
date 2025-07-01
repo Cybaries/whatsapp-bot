@@ -28,11 +28,6 @@ module.exports = async (sock, from) => {
             syntax: '!ping [optional message]'
         },
         {
-            title: '!roles',
-            description: 'Pick a role via emoji',
-            syntax: '!roles'
-        },
-        {
             title: '!stats',
             description: 'View usage stats',
             syntax: '!stats'
@@ -54,7 +49,7 @@ module.exports = async (sock, from) => {
         }
     ];
 
-    const text = `📖 *Command Menu*\n\n` + commands.map(cmd =>
+    const text = `🛠️ *Command Menu*\n\n` + commands.map(cmd =>
         `🔹 *${cmd.title}*\n${cmd.description}\n🧾 _Usage:_ \`${cmd.syntax}\`\n`
     ).join('\n');
 
