@@ -72,7 +72,7 @@ module.exports = async (sock, from, input, msg) => {
         await sock.sendMessage(from, {
             text: fullMessage,
             mentions
-        });
+        }, { quoted: msg });
 
         // ✅ Log failed mentions
         if (failedMentions.length > 0) {

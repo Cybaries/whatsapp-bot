@@ -18,24 +18,47 @@ module.exports = async (sock, from, input, msg) => {
         return;
     }
 
-    const senderId = msg.key.participant || msg.key.remoteJid;
-    const name = msg.pushName || 'User';
+    // STEP 1: Try to get mentioned user
+    let targetId;
+    const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
 
-    const stats = await getMessageStats(from, senderId);
+    if (contextInfo?.mentionedJid?.length > 0) {
+        // Case: !rank @someone
+        targetId = contextInfo.mentionedJid[ 0 ];
+    } else if (contextInfo?.participant && contextInfo?.quotedMessage) {
+        // Case: !rank used while replying to someone
+        targetId = contextInfo.participant;
+    } else {
+        // Case: !rank (self)
+        targetId = msg.key.participant || msg.key.remoteJid;
+    }
+
+    // Get display name
+    let displayName;
+    try {
+        const contact = await sock.onWhatsApp(targetId);
+        displayName = contact?.[ 0 ]?.notify || contact?.[ 0 ]?.name || targetId.split('@')[ 0 ];
+    } catch {
+        displayName = targetId.split('@')[ 0 ];
+    }
+
+    const stats = await getMessageStats(from, targetId);
     const messageCount = stats?.messageCount || 0;
     const rank = getRank(messageCount);
 
-    let profilePicUrl = 'https://i.imgur.com/oJZ9qVf.png'; // fallback
+    // Profile picture
+    let profilePicUrl = 'https://i.imgur.com/oJZ9qVf.png';
     try {
-        profilePicUrl = await sock.profilePictureUrl(senderId, 'image');
+        profilePicUrl = await sock.profilePictureUrl(targetId, 'image');
     } catch { }
 
-    const imageBuffer = await createRankCard({ name, profilePicUrl });
+    const imageBuffer = await createRankCard({ name: displayName, profilePicUrl });
 
-    const caption = `🌟 *${name}'s Rank Card*\n\n🏅 Rank: ${rank.emoji} *${rank.title}*\n📊 Messages Sent: *${messageCount}*`;
+    const caption = `🌟 *${displayName}'s Rank Card*\n\n🏅 Rank: ${rank.emoji} *${rank.title}*\n📊 Messages Sent: *${messageCount}*`;
 
     await sock.sendMessage(from, {
         image: imageBuffer,
-        caption
+        caption,
+        mentions: [ targetId ],
     }, { quoted: msg });
 };
