@@ -9,6 +9,7 @@ const { default: makeWASocket, useMongoDBAuthState, makeCacheableSignalKeyStore,
 const handleReaction = require('./utils/reactionhandler');
 const { MongoClient } = require('mongodb');
 const mongo = require('./utils/mongo');
+const { incrementMessageCount } = require('./utils/messageCounter');
 let fetch;
 (async () => {
     fetch = (await import('node-fetch')).default;
@@ -101,6 +102,9 @@ async function startBot() {
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
+
+        if (isGroup) await incrementMessageCount(from, sender);
+
 
         if ((isGroup && !ALLOWED_GROUPS.includes(from)) || (!isGroup && !ALLOWED_USERS.includes(from))) return;
 

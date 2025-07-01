@@ -13,9 +13,11 @@
     "@iamrony777/baileys": "^6.7.19-1",
     "axios": "^1.10.0",
     "bottleneck": "^2.19.5",
+    "canvas": "^3.1.2",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "mongodb": "^6.17.0",
+    "mongoose": "^8.16.1",
     "node-fetch": "^3.3.2",
     "qrcode": "^1.5.4"
   }
