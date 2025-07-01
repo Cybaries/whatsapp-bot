@@ -24,7 +24,7 @@ module.exports = async (sock, from, input, msg) => {
 
     if (contextInfo?.mentionedJid?.length > 0) {
         // Case: !rank @someone
-        targetId = contextInfo.mentionedJid[ 0 ];
+        targetId = contextInfo?.mentionedJid?.[ 0 ];
     } else if (contextInfo?.participant && contextInfo?.quotedMessage) {
         // Case: !rank used while replying to someone
         targetId = contextInfo.participant;
@@ -34,12 +34,16 @@ module.exports = async (sock, from, input, msg) => {
     }
 
     // Get display name
-    let displayName;
-    try {
-        const contact = await sock.onWhatsApp(targetId);
-        displayName = contact?.[ 0 ]?.notify || contact?.[ 0 ]?.name || targetId.split('@')[ 0 ];
-    } catch {
-        displayName = targetId.split('@')[ 0 ];
+    let displayName = targetId.split('@')[ 0 ]; // fallback
+
+    if (targetId === (msg.key.participant || msg.key.remoteJid)) {
+        // Self (caller)
+        displayName = msg.pushName || displayName;
+    } else {
+        // Someone else
+        const contactInfo = sock.contacts?.[ targetId ];
+        if (contactInfo?.name) displayName = contactInfo.name;
+        else if (contactInfo?.notify) displayName = contactInfo.notify;
     }
 
     const stats = await getMessageStats(from, targetId);
