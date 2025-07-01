@@ -2,7 +2,7 @@ const { createCanvas, loadImage, registerFont } = require('canvas');
 const axios = require('axios');
 const path = require('path');
 
-registerFont(path.join(__dirname, 'fonts', 'Roboto-Bold.ttf'), { family: 'Roboto' });
+registerFont(path.join(__dirname, 'fonts', 'royalfleur-regular.ttf'), { family: 'Roboto' });
 
 async function createRankCard({ name, profilePicUrl }) {
     const width = 800;
