@@ -25,16 +25,17 @@ module.exports = async (sock, from, input, msg) => {
     const messageCount = stats?.messageCount || 0;
     const rank = getRank(messageCount);
 
-    // Get profile pic (fallback if fails)
-    let profilePicUrl = 'https://i.imgur.com/oJZ9qVf.png'; // fallback image
+    let profilePicUrl = 'https://i.imgur.com/oJZ9qVf.png'; // fallback
     try {
         profilePicUrl = await sock.profilePictureUrl(senderId, 'image');
     } catch { }
 
-    const imageBuffer = await createRankCard({ name, profilePicUrl, messageCount, rank });
+    const imageBuffer = await createRankCard({ name, profilePicUrl });
+
+    const caption = `🌟 *${name}'s Rank Card*\n\n🏅 Rank: ${rank.emoji} *${rank.title}*\n📊 Messages Sent: *${messageCount}*`;
 
     await sock.sendMessage(from, {
         image: imageBuffer,
-        caption: `🏅 *${name}'s Rank Card*`,
+        caption
     }, { quoted: msg });
 };
