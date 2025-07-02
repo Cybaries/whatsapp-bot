@@ -5,7 +5,7 @@ const fs = require('fs');
 const { getAllRanks } = require('./rankUtils');
 
 registerFont(path.join(__dirname, 'fonts', 'royalfleur-regular.ttf'), { family: 'Roboto' });
-registerFont(path.join(__dirname, 'fonts', 'NotoColorEmoji.ttf'), { family: 'Noto Emoji' });
+registerFont(path.join(__dirname, 'fonts', 'NotoColorEmoji-Regular.ttf'), { family: 'Noto Emoji' });
 
 async function createRankCard({ name, profilePicUrl, rank, xp }) {
     const width = 800;
