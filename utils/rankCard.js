@@ -3,9 +3,6 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const { getAllRanks } = require('./rankUtils');
-const backgroundsDir = path.join(__dirname, 'backgrounds');
-const fallbackBgPath = path.join(backgroundsDir, 'default.jpg');
-const rankBgPath = path.join(backgroundsDir, rank.bg || '')
 
 registerFont(path.join(__dirname, 'fonts', 'royalfleur-regular.ttf'), { family: 'Roboto' });
 
@@ -14,6 +11,9 @@ async function createRankCard({ name, profilePicUrl, rank, xp }) {
     const height = 300;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
+    const backgroundsDir = path.join(__dirname, 'backgrounds');
+    const fallbackBgPath = path.join(backgroundsDir, 'default.jpg');
+    const rankBgPath = path.join(backgroundsDir, rank.bg || '')
 
     let backgroundLoaded = false;
 
