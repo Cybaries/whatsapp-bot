@@ -1,5 +1,7 @@
 const { getMessageStats } = require('../utils/messageCounter');
 const { createRankCard } = require('../utils/rankCard');
+const { getDisplayName } = require('../utils/getDisplayName');
+
 
 function getRank(messageCount = 0) {
     if (messageCount >= 1000) return { title: '👑🌌 Celestial Paragon', emoji: '👑🌌' };
@@ -38,19 +40,8 @@ module.exports = async (sock, from, input, msg) => {
     }
 
     // Get display name
-    let displayName = targetId.split('@')[ 0 ]; // fallback
-
-    if (targetId === (msg.key.participant || msg.key.remoteJid)) {
-        // Self (caller)
-        displayName = msg.pushName || displayName;
-    } else {
-        // Someone else
-        const contactInfo = sock.contacts?.[ targetId ];
-        console.log(contextInfo);
-        console.log(contactInfo);
-        if (contactInfo?.name) displayName = contactInfo.name;
-        else if (contactInfo?.notify) displayName = contactInfo.notify;
-    }
+    const isSelf = targetId === (msg.key.participant || msg.key.remoteJid);
+    const displayName = await getDisplayName(sock, targetId, isSelf ? msg.pushName : null);
 
     const stats = await getMessageStats(from, targetId);
     const messageCount = stats?.messageCount || 0;
