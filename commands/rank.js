@@ -30,7 +30,11 @@ module.exports = async (sock, from, input, msg) => {
         targetId = contextInfo.participant;
     } else {
         // Case: !rank (self)
-        targetId = msg.key.participant || msg.key.remoteJid;
+        targetId = msg.key.participant;
+        if (!targetId || targetId.endsWith('@g.us')) {
+            // fallback to msg.sender in case participant missing or group ID leaked
+            targetId = msg.sender || msg.key.remoteJid;
+        }
     }
 
     // Get display name
@@ -41,8 +45,9 @@ module.exports = async (sock, from, input, msg) => {
         displayName = msg.pushName || displayName;
     } else {
         // Someone else
-        console.log(msg.key);
         const contactInfo = sock.contacts?.[ targetId ];
+        console.log(contextInfo);
+        console.log(contactInfo);
         if (contactInfo?.name) displayName = contactInfo.name;
         else if (contactInfo?.notify) displayName = contactInfo.notify;
     }
