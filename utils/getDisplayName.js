@@ -1,18 +1,19 @@
 async function getDisplayName(sock, jid, fallbackName = null) {
     if (!jid) return fallbackName || 'Unknown';
 
-    // Try contacts cache
+    try {
+        // Try Baileys built-in name resolver
+        const name = await sock.fetchName(jid);
+        if (name) return name;
+    } catch (err) {
+        console.warn(`⚠️ Failed to fetch name for ${jid}:`, err.message);
+    }
+
+    // Fallbacks
     const contactInfo = sock.contacts?.[ jid ];
     if (contactInfo?.name) return contactInfo.name;
     if (contactInfo?.notify) return contactInfo.notify;
 
-    // Try onWhatsApp if not in cache
-    try {
-        const result = await sock.onWhatsApp(jid);
-        if (result?.[ 0 ]?.notify) return result[ 0 ].notify;
-    } catch { }
-
-    // Fallback to number
     return fallbackName || jid.split('@')[ 0 ];
 }
 
