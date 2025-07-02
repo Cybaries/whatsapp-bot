@@ -32,18 +32,24 @@ async function incrementMessageCount(groupId, userId, sock, msg) {
     const collection = db.collection('messageStats');
 
     const prev = await collection.findOne({ groupId, userId });
-    const oldXP = prev?.xp || 0;
+    const now = new Date();
+    const lastUpdated = prev?.lastUpdated ? new Date(prev.lastUpdated) : now;
+    const daysInactive = Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24));
+    const decayXP = daysInactive * 1; // -1 XP per day
+
+    const decayedXP = Math.max(oldXP - decayXP, 0);
     const xpGain = calculateXP(msg);
-    const newXP = oldXP + xpGain;
+    const newXP = decayedXP + xpGain;
 
     await collection.updateOne(
         { groupId, userId },
         {
-            $inc: { messageCount: 1, xp: xpGain },
-            $set: { lastUpdated: new Date() }
+            $set: { xp: newXP, lastUpdated: now },
+            $inc: { messageCount: 1 }
         },
         { upsert: true }
     );
+
 
     const oldRank = getRank(oldXP);
     const newRank = getRank(newXP);

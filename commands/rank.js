@@ -47,7 +47,7 @@ module.exports = async (sock, from, input, msg) => {
         profilePicUrl = await sock.profilePictureUrl(targetId, 'image');
     } catch { }
 
-    const imageBuffer = await createRankCard({ name: displayName, profilePicUrl });
+    const imageBuffer = await createRankCard({ name: displayName, profilePicUrl, rank, xp });
 
     const caption = `🌟 *${displayName}'s Rank Card*\n\n🏅 Rank: ${rank.emoji} *${rank.title}*\n📊 XP: *${xp}* • Messages: *${messageCount}*`;
 
