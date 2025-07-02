@@ -32,6 +32,7 @@ async function incrementMessageCount(groupId, userId, sock, msg) {
     const collection = db.collection('messageStats');
 
     const prev = await collection.findOne({ groupId, userId });
+    const oldXP = prev?.xp || 0;
     const now = new Date();
     const lastUpdated = prev?.lastUpdated ? new Date(prev.lastUpdated) : now;
     const daysInactive = Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24));
