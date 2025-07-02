@@ -5,6 +5,7 @@ const fs = require('fs');
 const { getAllRanks } = require('./rankUtils');
 
 registerFont(path.join(__dirname, 'fonts', 'royalfleur-regular.ttf'), { family: 'Roboto' });
+registerFont(path.join(__dirname, 'fonts', 'NotoColorEmoji.ttf'), { family: 'Noto Emoji' });
 
 async function createRankCard({ name, profilePicUrl, rank, xp }) {
     const width = 800;
@@ -63,10 +64,12 @@ async function createRankCard({ name, profilePicUrl, rank, xp }) {
     ctx.font = 'bold 40px Roboto';
     ctx.fillText(name, 280, 80);
 
-    // Draw rank title with emoji fallback
-    ctx.font = '30px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+    ctx.font = '30px "Noto Emoji"';
+    ctx.fillText(rank.emoji, 280, 130);
+    // Draw title
+    ctx.font = '30px Roboto';
     ctx.fillStyle = '#ffe600';
-    ctx.fillText(`${rank.emoji} ${rank.title}`, 280, 130);
+    ctx.fillText(rank.title, 320, 130);
 
 
     // === XP Progress Bar ===
