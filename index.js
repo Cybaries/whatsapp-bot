@@ -125,7 +125,14 @@ async function startBot() {
 
         limiter.schedule(async () => {
             try {
-                logMessage({ from, isGroup, command, input });
+                logMessage({
+                    from,
+                    isGroup,
+                    command,
+                    input,
+                    userId: sender // Optional — stores who triggered the command
+                });
+
                 totalRequests++;
                 userRequestCount.set(sender, (userRequestCount.get(sender) || 0) + 1);
                 console.log(`[+] Command from ${from} • You: ${userRequestCount.get(sender)} • Total: ${totalRequests}`);

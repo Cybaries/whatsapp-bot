@@ -1,14 +1,21 @@
-const fs = require('fs');
-const path = require('path');
+const mongo = require('./mongo');
 
-function logMessage({ from, isGroup, command, input }) {
-    const logPath = path.join(__dirname, '../logs/messages.log');
-    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-    const type = isGroup ? 'group' : 'private';
+async function logMessage({ from, isGroup, command, input, userId }) {
+    try {
+        const db = mongo.getDb();
+        const logs = db.collection('commandLogs');
 
-    const logEntry = `[${timestamp}] from=${from} (${type})\ncommand=${command} | input=${input || '(none)'}\n\n`;
-
-    fs.appendFileSync(logPath, logEntry);
+        await logs.insertOne({
+            timestamp: new Date(),
+            from,
+            userId: userId || from, // optional field
+            type: isGroup ? 'group' : 'private',
+            command,
+            input: input || null,
+        });
+    } catch (err) {
+        console.error('❌ Failed to log command to MongoDB:', err);
+    }
 }
 
 module.exports = { logMessage };

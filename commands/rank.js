@@ -41,6 +41,7 @@ module.exports = async (sock, from, input, msg) => {
         displayName = msg.pushName || displayName;
     } else {
         // Someone else
+        console.log(msg.key);
         const contactInfo = sock.contacts?.[ targetId ];
         if (contactInfo?.name) displayName = contactInfo.name;
         else if (contactInfo?.notify) displayName = contactInfo.notify;
