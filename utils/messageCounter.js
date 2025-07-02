@@ -2,20 +2,44 @@ const mongo = require('./mongo');
 const { getRank } = require('./rankUtils');
 const { getDisplayName } = require('./getDisplayName');
 
-const XP_PER_MESSAGE = 10;
+function calculateXP(msg) {
+    let xp = 10;
 
-async function incrementMessageCount(groupId, userId, sock) {
+    const text =
+        msg.message?.conversation ||
+        msg.message?.extendedTextMessage?.text ||
+        msg.message?.imageMessage?.caption ||
+        '';
+
+    if (text.length > 100) xp += 5;
+    if (text.length > 250) xp += 10;
+
+    const isReply = !!msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    if (isReply) xp += 5;
+
+    const hasMedia =
+        msg.message?.imageMessage ||
+        msg.message?.videoMessage ||
+        msg.message?.audioMessage ||
+        msg.message?.documentMessage;
+    if (hasMedia) xp += 5;
+
+    return xp;
+}
+
+async function incrementMessageCount(groupId, userId, sock, msg) {
     const db = mongo.getDb();
     const collection = db.collection('messageStats');
 
     const prev = await collection.findOne({ groupId, userId });
     const oldXP = prev?.xp || 0;
-    const newXP = oldXP + XP_PER_MESSAGE;
+    const xpGain = calculateXP(msg);
+    const newXP = oldXP + xpGain;
 
     await collection.updateOne(
         { groupId, userId },
         {
-            $inc: { messageCount: 1, xp: XP_PER_MESSAGE },
+            $inc: { messageCount: 1, xp: xpGain },
             $set: { lastUpdated: new Date() }
         },
         { upsert: true }

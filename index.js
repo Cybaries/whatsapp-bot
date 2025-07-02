@@ -103,7 +103,7 @@ async function startBot() {
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
 
-        if (isGroup) await incrementMessageCount(from, sender, sock);
+        if (isGroup) await incrementMessageCount(from, sender, sock, msg);
 
 
         if ((isGroup && !ALLOWED_GROUPS.includes(from)) || (!isGroup && !ALLOWED_USERS.includes(from))) return;
