@@ -63,10 +63,11 @@ async function createRankCard({ name, profilePicUrl, rank, xp }) {
     ctx.font = 'bold 40px Roboto';
     ctx.fillText(name, 280, 80);
 
-    // === Rank Title ===
+    // Draw rank title with emoji fallback
+    ctx.font = '30px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
     ctx.fillStyle = '#ffe600';
-    ctx.font = '30px Roboto';
     ctx.fillText(`${rank.emoji} ${rank.title}`, 280, 130);
+
 
     // === XP Progress Bar ===
     const ranks = getAllRanks();
