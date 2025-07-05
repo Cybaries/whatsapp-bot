@@ -6,7 +6,7 @@ let db;
 module.exports = {
     init: async () => {
         if (!client) {
-            client = new MongoClient(process.env.MONGO_URI, { useUnifiedTopology: true });
+            client = new MongoClient(process.env.MONGO_URI);
             await client.connect();
             db = client.db(process.env.MONGO_DB || 'whatsapp');
             console.log('✅ MongoDB connected');

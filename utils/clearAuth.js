@@ -1,14 +1,13 @@
-// utils/clearAuth.js
-const { MongoClient } = require('mongodb');
-require('dotenv').config();
+const mongo = require('./mongo');
 
-async function dropAuth() {
-    const client = new MongoClient(process.env.MONGO_URI);
-    await client.connect();
-    const db = client.db(process.env.MONGO_DB || 'whatsapp');
-    await db.collection(process.env.MONGO_COLLECTION || 'auth').drop();
-    console.log('✅ Dropped old auth credentials.');
-    process.exit();
+async function deleteStaleAuth() {
+    try {
+        const collection = mongo.getDb().collection(process.env.MONGO_COLLECTION || 'whatsapp');
+        const result = await collection.deleteMany({ type: 'authState' }); // 🛡️ only auth-related docs
+        console.log(`🧹 Deleted ${result.deletedCount} authState documents.`);
+    } catch (err) {
+        console.error('❌ Failed to delete auth:', err);
+    }
 }
 
-dropAuth();
+module.exports = { deleteStaleAuth };

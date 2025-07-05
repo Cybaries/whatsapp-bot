@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@iamrony777/baileys": "^6.7.19-1",
+    "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.10.0",
     "bottleneck": "^2.19.5",
     "canvas": "^3.1.2",
@@ -19,6 +20,7 @@
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.1",
     "node-fetch": "^3.3.2",
+    "pino-pretty": "^13.0.0",
     "qrcode": "^1.5.4"
   }
 }
