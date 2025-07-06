@@ -13,7 +13,7 @@ const {
     handleIncomingMessages,
     handleReaction,
     setBotReady,
-    isBotReady
+    setRestartCallback,
 } = require('./messageHandler');
 
 

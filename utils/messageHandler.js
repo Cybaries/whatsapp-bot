@@ -10,8 +10,6 @@ const ALLOWED_USERS = (process.env.ALLOWED_USERS || '').split(',').filter(Boolea
 const ALLOWED_GROUPS = (process.env.ALLOWED_GROUPS || '').split(',').filter(Boolean);
 const retryAttempts = new Map();
 
-
-
 const userCooldowns = new Map();
 const userRequestCount = new Map();
 let totalRequests = 0;
@@ -26,7 +24,7 @@ function setBotReady(status) {
 function isBotReady() {
     return botReady;
 }
-// Message Queue
+
 const messageQueue = [];
 let processingQueue = false;
 let restartCallback = () => { };
@@ -45,7 +43,7 @@ async function processRetryQueue() {
     logger.info(`🔁 Processing retry queue with ${retryQueue.length} messages...`);
 
     const toRetry = [ ...retryQueue ];
-    retryQueue.length = 0; // clear the queue
+    retryQueue.length = 0;
 
     for (const item of toRetry) {
         if (item.attempts >= MAX_RETRIES) {
@@ -55,15 +53,14 @@ async function processRetryQueue() {
 
         try {
             logger.info(`🔁 Retrying command: ${item.command} (Attempt ${item.attempts + 1})`);
-            messageQueue.push({ ...item }); // push back into main queue
+            messageQueue.push({ ...item });
             processQueue();
         } catch (err) {
             item.attempts += 1;
-            retryQueue.push(item); // retry later
+            retryQueue.push(item);
         }
     }
 }
-
 
 async function processQueue() {
     if (processingQueue || messageQueue.length === 0) return;
@@ -143,10 +140,8 @@ async function handleIncomingMessages(sock, messages) {
         const remoteJid = msg?.key?.remoteJid;
         const messageId = msg?.key?.id;
 
-        const isDecryptionError = err.message?.includes('decrypt') ||
-            err.message === 'Undecryptable message' ||
-            err.message?.includes('No session found') ||
-            err.message?.includes('SenderKeyRecord');
+        const msgStr = err?.message || '';
+        const isDecryptionError = /decrypt|undecryptable|no session|senderkey/i.test(msgStr);
 
         if (isDecryptionError && remoteJid && messageId) {
             const previousAttempt = retryAttempts.get(messageId) || 0;
@@ -166,24 +161,31 @@ async function handleIncomingMessages(sock, messages) {
                     attempts: previousAttempt + 1
                 });
 
-                return; // Don't restart yet — wait for WhatsApp retry
+                return; // wait for retry to happen naturally
             }
 
-            console.error(`❌ Decryption failed again for ${messageId}. Restarting bot...`);
+            retryAttempts.delete(messageId); // clean up
 
-            try {
-                if (isSocketAlive(sock)) {
-                    await sock.sendMessage(remoteJid, {
-                        text: '⚠️ Could not decrypt your message. Restarting bot. Please resend the command.',
-                    }, msg?.message ? { quoted: msg } : undefined);
+            // Check if message is partially readable
+            const hasReadableBody = msg?.message?.conversation ||
+                msg?.message?.extendedTextMessage?.text ||
+                msg?.message?.imageMessage?.caption;
+
+            if (hasReadableBody) {
+                try {
+                    if (isSocketAlive(sock)) {
+                        await sock.sendMessage(remoteJid, {
+                            text: '⚠️ Could not decrypt your message. Please resend the command',
+                        }, { quoted: msg });
+                    }
+                } catch (sendErr) {
+                    logger.error({ err: sendErr }, '❌ Failed to send error message to user.');
                 }
-            } catch (sendErr) {
-                logger.error({ err: sendErr }, '❌ Failed to send error message to user.');
+            } else {
+                logger.warn(`⚠️ Dropping unreadable message ${messageId} without reply to avoid "Waiting for message..."`);
             }
 
-            retryAttempts.delete(messageId);
-            await deleteStaleAuth();
-            return restartCallback();
+            return; // don't restart or delete session
         }
 
         logger.error({ err }, '❌ Unexpected error in handleIncomingMessages');
@@ -198,4 +200,3 @@ module.exports = {
     setBotReady,
     isBotReady,
 };
-
