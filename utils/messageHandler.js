@@ -166,25 +166,15 @@ async function handleIncomingMessages(sock, messages) {
 
             retryAttempts.delete(messageId); // clean up
 
-            // Check if message is partially readable
-            const hasReadableBody = msg?.message?.conversation ||
-                msg?.message?.extendedTextMessage?.text ||
-                msg?.message?.imageMessage?.caption;
-
-            if (hasReadableBody) {
-                try {
-                    if (isSocketAlive(sock)) {
-                        await sock.sendMessage(remoteJid, {
-                            text: '⚠️ Could not decrypt your message. Please resend the command',
-                        }, { quoted: msg });
-                    }
-                } catch (sendErr) {
-                    logger.error({ err: sendErr }, '❌ Failed to send error message to user.');
+            try {
+                if (isSocketAlive(sock)) {
+                    await sock.sendMessage(remoteJid, {
+                        text: '⚠️ Could not decrypt your message. Please resend the command.',
+                    }, msg?.message ? { quoted: msg } : undefined);
                 }
-            } else {
-                logger.warn(`⚠️ Dropping unreadable message ${messageId} without reply to avoid "Waiting for message..."`);
+            } catch (sendErr) {
+                logger.error({ err: sendErr }, '❌ Failed to send error message to user.');
             }
-
             return; // don't restart or delete session
         }
 
