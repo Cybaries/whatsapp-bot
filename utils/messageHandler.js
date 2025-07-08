@@ -116,7 +116,6 @@ async function handleIncomingMessages(sock, messages) {
         const sender = msg.key.participant || msg.key.remoteJid;
 
         if (sender.endsWith('@g.us')) {
-            logger.warn('⏸ Sender is a group');
             return;
         }
         if (isGroup && ALLOWED_GROUPS.includes(from)) await incrementMessageCount(from, sender, sock, msg);
