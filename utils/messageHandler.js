@@ -102,6 +102,10 @@ async function processQueue() {
 }
 
 async function handleIncomingMessages(sock, messages) {
+    if (sender.endsWith('@g.us')) {
+        logger.warn('⏸ Sender is a group');
+        return;
+    }
     if (!isBotReady()) {
         logger.warn('⏸ Bot not ready, deferring message processing...');
         return;
@@ -115,7 +119,7 @@ async function handleIncomingMessages(sock, messages) {
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
 
-        if (isGroup && ALLOWED_GROUPS.includes(from) && !sender.endsWith('@g.us')) await incrementMessageCount(from, sender, sock, msg);
+        if (isGroup && ALLOWED_GROUPS.includes(from)) await incrementMessageCount(from, sender, sock, msg);
         if ((isGroup && !ALLOWED_GROUPS.includes(from)) || (!isGroup && !ALLOWED_USERS.includes(from))) return;
 
         const text = msg.message?.conversation ||
@@ -131,10 +135,8 @@ async function handleIncomingMessages(sock, messages) {
         if (Date.now() - last < COOLDOWN_MS) return;
         userCooldowns.set(sender, Date.now());
 
-        if (!sender.endsWith('@g.us')) {
-            messageQueue.push({ sock, from, command, input, msg, sender, isGroup });
-            processQueue();
-        }
+        messageQueue.push({ sock, from, command, input, msg, sender, isGroup });
+        processQueue();
 
     } catch (err) {
         const remoteJid = msg?.key?.remoteJid;
