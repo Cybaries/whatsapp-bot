@@ -102,10 +102,6 @@ async function processQueue() {
 }
 
 async function handleIncomingMessages(sock, messages) {
-    if (sender.endsWith('@g.us')) {
-        logger.warn('⏸ Sender is a group');
-        return;
-    }
     if (!isBotReady()) {
         logger.warn('⏸ Bot not ready, deferring message processing...');
         return;
@@ -119,6 +115,10 @@ async function handleIncomingMessages(sock, messages) {
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
 
+        if (sender.endsWith('@g.us')) {
+            logger.warn('⏸ Sender is a group');
+            return;
+        }
         if (isGroup && ALLOWED_GROUPS.includes(from)) await incrementMessageCount(from, sender, sock, msg);
         if ((isGroup && !ALLOWED_GROUPS.includes(from)) || (!isGroup && !ALLOWED_USERS.includes(from))) return;
 
