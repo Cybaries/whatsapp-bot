@@ -106,20 +106,27 @@ async function handleIncomingMessages(sock, messages) {
         logger.warn('⏸ Bot not ready, deferring message processing...');
         return;
     }
+
     const msg = messages[ 0 ];
+    if (!msg?.message) return;
+
+    const from = msg.key.remoteJid;
+    const isGroup = from.endsWith('@g.us');
+    const sender = msg.key.participant || msg.key.remoteJid;
+
+    // 🛡️ Early exit for status broadcast or unauthorized senders/groups
+    if (sender.endsWith('@g.us')) return;
+
+    const isAllowed =
+        (isGroup && ALLOWED_GROUPS.includes(from)) ||
+        (!isGroup && ALLOWED_USERS.includes(from));
+
+    if (!isAllowed) return;
 
     try {
-        if (!msg.message) throw new Error('Undecryptable message');
-
-        const from = msg.key.remoteJid;
-        const isGroup = from.endsWith('@g.us');
-        const sender = msg.key.participant || msg.key.remoteJid;
-
-        if (sender.endsWith('@g.us')) {
-            return;
+        if (isGroup) {
+            await incrementMessageCount(from, sender, sock, msg);
         }
-        if (isGroup && ALLOWED_GROUPS.includes(from)) await incrementMessageCount(from, sender, sock, msg);
-        if ((isGroup && !ALLOWED_GROUPS.includes(from)) || (!isGroup && !ALLOWED_USERS.includes(from))) return;
 
         const text = msg.message?.conversation ||
             msg.message?.extendedTextMessage?.text ||
@@ -167,14 +174,33 @@ async function handleIncomingMessages(sock, messages) {
 
             retryAttempts.delete(messageId); // clean up
 
+            // Check if sender is allowed before sending response
+            const isAllowed =
+                (isGroup && ALLOWED_GROUPS.includes(remoteJid)) ||
+                (!isGroup && ALLOWED_USERS.includes(remoteJid));
+
+            if (!isAllowed) return;
+
+            const responseText = '⚠️ Could not decrypt your message. Please resend the command.';
+
             try {
-                if (isSocketAlive(sock)) {
-                    await sock.sendMessage(remoteJid, {
-                        text: '⚠️ Could not decrypt your message. Please resend the command.',
-                    }, msg?.message ? { quoted: msg } : undefined);
+                await sock.sendMessage(remoteJid, {
+                    text: responseText,
+                }, msg?.message ? { quoted: msg } : undefined);
+            } catch (err) {
+                if (/prekey|session/i.test(err.message)) {
+                    logger.warn(`⚠️ Session error for ${remoteJid}, retrying...`);
+                    await new Promise(res => setTimeout(res, 500));
+                    try {
+                        await sock.sendMessage(remoteJid, {
+                            text: responseText,
+                        }, msg?.message ? { quoted: msg } : undefined);
+                    } catch (innerErr) {
+                        logger.error({ err: innerErr }, '❌ Retry failed after session refresh.');
+                    }
+                } else {
+                    logger.error({ err }, '❌ Failed to send decryption error message.');
                 }
-            } catch (sendErr) {
-                logger.error({ err: sendErr }, '❌ Failed to send error message to user.');
             }
             return; // don't restart or delete session
         }
