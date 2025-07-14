@@ -11,6 +11,11 @@ module.exports = async (sock, from) => {
             syntax: '!rank'
         },
         {
+            title: '!leaderboard',
+            description: 'View the top 10 interaction leaders in the group',
+            syntax: '!leaderboard'
+        },
+        {
             title: '!promote',
             description: 'Promote a tagged user to admin (admin-only).',
             syntax: '!promte <mention>'
