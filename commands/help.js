@@ -18,7 +18,7 @@ module.exports = async (sock, from) => {
         {
             title: '!promote',
             description: 'Promote a tagged user to admin (admin-only).',
-            syntax: '!promte <mention>'
+            syntax: '!promote <mention>'
         },
         {
             title: '!demote',
