@@ -44,10 +44,9 @@ module.exports = async (sock, from) => {
 
     const text = `🛠️ *Command Menu*\n\n` + commands.map(cmd =>
         `🔹 *${cmd.title}*\n${cmd.description}\n🧾 _Usage:_ \`${cmd.syntax}\`\n`
-    ).join('\n');
+    ).join('\n') + `\n\n🤖 *_Bot by Cybaries_*`;
 
     await sock.sendMessage(from, {
-        text,
-        footer: 'Bot by Cybaries'
+        text
     });
 };
