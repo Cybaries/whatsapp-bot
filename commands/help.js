@@ -11,6 +11,11 @@ module.exports = async (sock, from) => {
             syntax: '!assign <RoleName> <@mention1> <@mention2> ...'
         },
         {
+            title: '!listRole',
+            description: 'List all roles or users in a specific role',
+            syntax: '!listRole [optional <RoleName>]'
+        },
+        {
             title: '!rank',
             description: 'View your rank and XP in the group',
             syntax: '!rank'
