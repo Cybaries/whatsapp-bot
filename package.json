@@ -10,7 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@iamrony777/baileys": "^6.7.19-1",
+    "@iamrony777/baileys": "^6.7.2",
     "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.10.0",
     "bottleneck": "^2.19.5",
