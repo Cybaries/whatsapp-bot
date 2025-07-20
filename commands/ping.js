@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
+const mongo = require('../utils/mongo');
 const { getSenderId } = require('../utils/helpers');
+const { getDisplayName } = require('../utils/getDisplayName');
 
 const pingCooldowns = new Map(); // groupId -> lastTimestamp
 
@@ -25,72 +25,64 @@ module.exports = async (sock, from, input, msg) => {
         }
 
         // ⏱ Cooldown
-        const now = Date.now();
-        const lastPing = pingCooldowns.get(from) || 0;
-        if (now - lastPing < 60_000) {
-            const remaining = Math.ceil((60_000 - (now - lastPing)) / 1000);
-            return sock.sendMessage(from, {
-                text: `⏳ Please wait ${remaining}s before using \`!ping\` again.`
-            });
-        }
-        pingCooldowns.set(from, now);
+        // const now = Date.now();
+        // const lastPing = pingCooldowns.get(from) || 0;
+        // if (now - lastPing < 60_000) {
+        //     const remaining = Math.ceil((60_000 - (now - lastPing)) / 1000);
+        //     return sock.sendMessage(from, {
+        //         text: `⏳ Please wait ${remaining}s before using \`!ping\` again.`
+        //     });
+        // }
+        // pingCooldowns.set(from, now);
 
-        const botIdRaw = global.BOT_ID;
-        const botId = botIdRaw.split(':')[ 0 ]; // remove suffix like ":46"
+        const botId = (global.BOT_ID || '').split(':')[ 0 ];
+        const inputParts = input.trim().split(/\s+/);
+        const [ firstWord, ...restWords ] = inputParts.slice(0);
 
-        const mentions = [];
-        const failedMentions = [];
+        const db = await mongo.getDb();
+        const rolesCollection = db.collection('roles');
 
-        // 🧠 Build mention list
-        for (const p of metadata.participants) {
-            const id = p.id;
-            if (!id || typeof id !== 'string') {
-                failedMentions.push({ reason: 'Invalid ID', id });
-                continue;
+        let mentions = [];
+        let mentionType = 'everyone';
+        let messageBody = input.trim();
+
+        // Detect role ping
+        if (firstWord?.startsWith('@')) {
+            const roleName = firstWord.slice(1).toUpperCase();
+            const roleDoc = await rolesCollection.findOne({ groupId: from, role: roleName });
+
+            if (roleDoc && Array.isArray(roleDoc.members) && roleDoc.members.length > 0) {
+                mentions = roleDoc.members.filter(id => id !== botId);
+                mentionType = `@${roleName}`;
+                messageBody = restWords.join(' ').trim();
+            } else {
+                return sock.sendMessage(from, {
+                    text: `❌ No users found with the role \`${roleName}\`.`
+                });
             }
-            if (id === botId) continue; // skip bot
-            if (!id.endsWith('@s.whatsapp.net')) {
-                failedMentions.push({ reason: 'Malformed JID', id });
-                continue;
+        } else {
+            // Ping everyone
+            for (const p of metadata.participants) {
+                const id = p.id;
+                if (!id || typeof id !== 'string') continue;
+                if (id === botId || !id.endsWith('@s.whatsapp.net')) continue;
+                mentions.push(id);
             }
-            mentions.push(id);
         }
 
-        // 👤 Get sender's WhatsApp name
-        let senderName = 'Unknown';
-        try {
-            senderName = await sock.getName(senderId);
-            if (!senderName) senderName = senderId.split('@')[ 0 ];
-        } catch {
-            senderName = senderId.split('@')[ 0 ];
-        }
+        // 👤 Sender name only
+        const name = await getDisplayName(sock, senderId);
+        const senderName = name.startsWith('@') ? name : `@${name}`;
 
-        const message = input?.trim()
-        const fullMessage = `📢 Attention everyone!\n\n${message}\n\n\t*[Hidden Tags]*\n\n👤 _~ ${senderName}`;
+        // ✉️ Compose final message (No role member names shown)
+        const finalMessage = `📢 *Ping ${mentionType}*\n\n${messageBody}\n\n👤 _~ ${senderName}_`;
 
-        // ✅ Send ping (hidden visible mentions, actual mentions preserved)
         await sock.sendMessage(from, {
-            text: fullMessage,
+            text: finalMessage,
             mentions
         }, { quoted: msg });
 
-        // ✅ Log failed mentions
-        if (failedMentions.length > 0) {
-            const logPath = path.join(__dirname, '..', 'logs', 'ping_failed_mentions.log');
-            const groupName = metadata.subject;
-            const timestamp = new Date().toISOString();
-
-            const logText = failedMentions.map(f => `- ${f.id || 'UNKNOWN'} (${f.reason})`).join('\n');
-            const fullLog = `[${timestamp}] Group: "${groupName}" (${from}) | Sender: ${senderName} (${senderId})\nFailed to mention:\n${logText}\n\n`;
-
-            fs.appendFile(logPath, fullLog, err => {
-                if (err) console.error('❌ Failed to log ping errors:', err);
-                else console.log(`⚠️ Logged ${failedMentions.length} mention errors.`);
-            });
-        }
-
-        console.log(`✅ !ping sent to ${mentions.length} members (group: ${metadata.subject})`);
-
+        console.log(`✅ !ping sent to ${mentions.length} members with role "${mentionType}"`);
     } catch (err) {
         console.error('❌ Error in !ping command:', err);
         await sock.sendMessage(from, {

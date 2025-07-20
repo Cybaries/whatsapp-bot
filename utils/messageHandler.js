@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const { incrementMessageCount } = require('./messageCounter');
 const { logMessage, logger } = require('./logger');
-const { deleteStaleAuth } = require('./clearAuth');
 
 const PREFIX = '!';
 const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '15000');
@@ -169,12 +168,11 @@ async function handleIncomingMessages(sock, messages) {
                     attempts: previousAttempt + 1
                 });
 
-                return; // wait for retry to happen naturally
+                return;
             }
 
-            retryAttempts.delete(messageId); // clean up
+            retryAttempts.delete(messageId);
 
-            // Check if sender is allowed before sending response
             const isAllowed =
                 (isGroup && ALLOWED_GROUPS.includes(remoteJid)) ||
                 (!isGroup && ALLOWED_USERS.includes(remoteJid));
@@ -202,18 +200,17 @@ async function handleIncomingMessages(sock, messages) {
                     logger.error({ err }, '❌ Failed to send decryption error message.');
                 }
             }
-            return; // don't restart or delete session
+            return;
         }
 
         logger.error({ err }, '❌ Unexpected error in handleIncomingMessages');
     }
-
 }
 
 module.exports = {
     handleIncomingMessages,
-    handleReaction: require('./reactionhandler'),
     setRestartCallback,
     setBotReady,
     isBotReady,
+    processRetryQueue
 };

@@ -1,20 +1,29 @@
+// utils/getDisplayName.js
+
 async function getDisplayName(sock, jid, fallbackName = null) {
     if (!jid) return fallbackName || 'Unknown';
 
     try {
-        // 1. Try Baileys built-in name resolver
-        const name = await sock.fetchName(jid);
-        if (name) return name;
+        // 1. Try from contacts object
+        const contact = sock.contacts?.[ jid ];
+        if (contact?.name) return contact.name;
+        if (contact?.notify) return contact.notify;
+
+        // 2. If user is in a group, fetch name from group participants
+        const userJid = jid;
+        if (userJid && userJid.includes('@s.whatsapp.net')) {
+            const groups = await sock.groupFetchAllParticipating();
+            for (const group of Object.values(groups)) {
+                const participant = group?.participants?.find(p => p.id === userJid);
+                if (participant?.name) return participant.name;
+            }
+        }
+
     } catch (err) {
         console.warn(`⚠️ Failed to fetch name for ${jid}:`, err.message);
     }
 
-    // 2. Try from contacts object
-    const contactInfo = sock.contacts?.[ jid ];
-    if (contactInfo?.name) return contactInfo.name;
-    if (contactInfo?.notify) return contactInfo.notify;
-
-    // 3. Format as @user if nothing else is found
+    // 3. Fallback: @number
     const user = jid.split('@')[ 0 ];
     return `@${user}` || fallbackName || 'Unknown';
 }

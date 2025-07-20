@@ -2,32 +2,37 @@ module.exports = async (sock, from) => {
     const commands = [
         {
             title: '!ping',
-            description: 'Tag all users (admin only)',
-            syntax: '!ping [optional message]'
+            description: 'Tag all users or a specific role (admin only)',
+            syntax: '!ping [optional message] or !ping <RoleName>'
+        },
+        {
+            title: '!assign',
+            description: 'Assign a role to one or more mentioned users (admin-only)',
+            syntax: '!assign <RoleName> <@mention1> <@mention2> ...'
         },
         {
             title: '!rank',
-            description: 'View user\'s rank',
+            description: 'View your rank and XP in the group',
             syntax: '!rank'
         },
         {
             title: '!leaderboard',
-            description: 'View the top 10 interaction leaders in the group',
+            description: 'View the top 10 most active members in the group',
             syntax: '!leaderboard'
         },
         {
             title: '!promote',
-            description: 'Promote a tagged user to admin (admin-only).',
-            syntax: '!promote <mention>'
+            description: 'Promote a tagged user to admin (admin-only)',
+            syntax: '!promote <@mention>'
         },
         {
             title: '!demote',
-            description: 'Demote a tagged user to admin (admin-only).',
-            syntax: '!demote <mention>'
+            description: 'Demote a tagged user from admin (admin-only)',
+            syntax: '!demote <@mention>'
         },
         {
             title: '!weather',
-            description: 'Shows current weather for the given city.',
+            description: 'Shows current weather for the given city',
             syntax: '!weather <city>'
         },
         {

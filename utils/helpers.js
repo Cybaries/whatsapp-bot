@@ -4,4 +4,10 @@ function getSenderId(msg) {
         : msg.key.participant || msg.key.remoteJid;
 }
 
-module.exports = { getSenderId };
+function extractMentions(text) {
+    const mentionPattern = /@(\d{5,})/g;
+    const matches = [ ...text.matchAll(mentionPattern) ];
+    return matches.map(match => `${match[ 1 ]}@s.whatsapp.net`);
+}
+
+module.exports = { extractMentions, getSenderId };
