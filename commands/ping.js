@@ -24,16 +24,16 @@ module.exports = async (sock, from, input, msg) => {
             });
         }
 
-        // ⏱ Cooldown
-        // const now = Date.now();
-        // const lastPing = pingCooldowns.get(from) || 0;
-        // if (now - lastPing < 60_000) {
-        //     const remaining = Math.ceil((60_000 - (now - lastPing)) / 1000);
-        //     return sock.sendMessage(from, {
-        //         text: `⏳ Please wait ${remaining}s before using \`!ping\` again.`
-        //     });
-        // }
-        // pingCooldowns.set(from, now);
+        //⏱ Cooldown
+        const now = Date.now();
+        const lastPing = pingCooldowns.get(from) || 0;
+        if (now - lastPing < 60_000) {
+            const remaining = Math.ceil((60_000 - (now - lastPing)) / 1000);
+            return sock.sendMessage(from, {
+                text: `⏳ Please wait ${remaining}s before using \`!ping\` again.`
+            });
+        }
+        pingCooldowns.set(from, now);
 
         const botId = (global.BOT_ID || '').split(':')[ 0 ];
         const inputParts = input.trim().split(/\s+/);
