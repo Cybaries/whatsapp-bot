@@ -10,8 +10,8 @@ let fetch;
 (async () => { fetch = (await import('node-fetch')).default; })();
 
 const app = express();
-const PORT = process.env.QR_PORT || 3000;
-
+const PORT = process.env.PORT || 3000;
+app.get('/ping', (_, res) => res.send('pong'));
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'views/qr.html')));
 app.get('/qr', async (_, res) => {
     const qr = getLatestQR();
