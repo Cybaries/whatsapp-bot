@@ -23,12 +23,12 @@ app.listen(PORT, () => logger.info(`🧿 QR viewer: http://localhost:${PORT}`));
 // 🔁 Start bot
 startBot();
 
-// 🌐 Keep-alive
-setInterval(async () => {
-    try {
-        const res = await fetch(process.env.PING_URL);
-        logger.info(`📡 Self-ping successful: ${res.status}`);
-    } catch (e) {
-        logger.error('Ping failed:', e);
-    }
-}, 8 * 60 * 1000);
+// // 🌐 Keep-alive
+// setInterval(async () => {
+//     try {
+//         const res = await fetch(process.env.PING_URL);
+//         logger.info(`📡 Self-ping successful: ${res.status}`);
+//     } catch (e) {
+//         logger.error('Ping failed:', e);
+//     }
+// }, 8 * 60 * 1000);
