@@ -1,9 +1,11 @@
 const pino = require('pino');
 const mongo = require('./mongo');
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const logger = pino({
-    level: process.env.LOG_LEVEL || 'info',
-    transport: {
+    level: process.env.LOG_LEVEL || (isProd ? 'warn' : 'info'),
+    transport: isProd ? undefined : {
         target: 'pino-pretty',
         options: {
             colorize: true,
@@ -39,10 +41,7 @@ async function logMessage({ from, isGroup, command, input, userId }) {
 
         await logs.insertOne(logEntry);
 
-        logger.info({
-            ...logEntry,
-            mongo: true
-        }, `📥 ${isGroup ? 'Group' : 'DM'} command: !${command}`);
+        logger.info({ ...logEntry, mongo: true }, `📥 ${isGroup ? 'Group' : 'DM'} command: !${command}`);
     } catch (err) {
         logger.error({ err }, '❌ Failed to log command to MongoDB');
     }
@@ -50,5 +49,5 @@ async function logMessage({ from, isGroup, command, input, userId }) {
 
 module.exports = {
     logMessage,
-    logger // export pino logger for use elsewhere
+    logger
 };
