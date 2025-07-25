@@ -11,6 +11,11 @@ module.exports = {
             syntax: '!weather <city>'
         },
         {
+            title: '!listRole',
+            description: 'List all roles or users in a specific role',
+            syntax: '!listRole [optional <RoleName>]'
+        },
+        {
             title: '!help',
             description: 'Display the help menu',
             syntax: '!help [category]'
@@ -23,11 +28,6 @@ module.exports = {
             syntax: '!assign <RoleName> <@mention1> <@mention2> ...'
         },
         {
-            title: '!listRole',
-            description: 'List all roles or users in a specific role',
-            syntax: '!listRole [optional <RoleName>]'
-        },
-        {
             title: '!promote',
             description: 'Promote a tagged user to admin (admin only)',
             syntax: '!promote <@mention>'
@@ -36,6 +36,16 @@ module.exports = {
             title: '!demote',
             description: 'Demote a tagged user from admin (admin only)',
             syntax: '!demote <@mention>'
+        },
+        {
+            title: 'Kick',
+            description: 'Remove a user from the group.',
+            syntax: '!kick @user'
+        },
+        {
+            title: '!delete',
+            description: 'Remove unwanted messages.',
+            syntax: '!delete (as a reply)'
         }
     ],
     stats: [
