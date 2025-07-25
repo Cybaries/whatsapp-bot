@@ -1,57 +1,29 @@
-module.exports = async (sock, from) => {
-    const commands = [
-        {
-            title: '!ping',
-            description: 'Tag all users or a specific role (admin only)',
-            syntax: '!ping [optional message] or !ping <RoleName>'
-        },
-        {
-            title: '!assign',
-            description: 'Assign a role to one or more mentioned users (admin-only)',
-            syntax: '!assign <RoleName> <@mention1> <@mention2> ...'
-        },
-        {
-            title: '!listRole',
-            description: 'List all roles or users in a specific role',
-            syntax: '!listRole [optional <RoleName>]'
-        },
-        {
-            title: '!rank',
-            description: 'View your rank and XP in the group',
-            syntax: '!rank'
-        },
-        {
-            title: '!leaderboard',
-            description: 'View the top 10 most active members in the group',
-            syntax: '!leaderboard'
-        },
-        {
-            title: '!promote',
-            description: 'Promote a tagged user to admin (admin-only)',
-            syntax: '!promote <@mention>'
-        },
-        {
-            title: '!demote',
-            description: 'Demote a tagged user from admin (admin-only)',
-            syntax: '!demote <@mention>'
-        },
-        {
-            title: '!weather',
-            description: 'Shows current weather for the given city',
-            syntax: '!weather <city>'
-        },
-        {
-            title: '!help',
-            description: 'Display this help menu',
-            syntax: '!help'
-        }
-    ];
+const groupedCommands = require('../utils/helpCommand');
 
-    const text = `🛠️ *Command Menu*\n\n` + commands.map(cmd =>
-        `🔹 *${cmd.title}*\n${cmd.description}\n🧾 _Usage:_ \`${cmd.syntax}\`\n`
-    ).join('\n') + `\n\n🤖 *_Bot by Cybaries_*`;
+module.exports = async (sock, from, input = '', msg) => {
+    const category = input.trim().toLowerCase(); // "general", "admin", etc.
 
-    await sock.sendMessage(from, {
-        text
-    });
+    if (!category || !groupedCommands[ category ]) {
+        // Show the main help menu
+        const helpText = `🛠️ *Help Menu*\n\nType one of the following commands to get help:\n\n` +
+            `📋 *!help general* – _General commands_\n` +
+            `⚙️ *!help admin* – _Admin-only commands_\n` +
+            `📊 *!help stats* – _XP and ranking commands_\n\n` +
+            `🤖 Bot by Cybaries`;
+
+        return await sock.sendMessage(from, { text: helpText });
+    }
+
+    // Show help for the specified category
+    const section = groupedCommands[ category ];
+    const helpDetails = `📚 *${capitalize(category)} Commands*\n\n` +
+        section.map(cmd =>
+            `🔹 *${cmd.title}*\n${cmd.description}\n🧾 _Usage:_ \`${cmd.syntax}\`\n`
+        ).join('\n');
+
+    await sock.sendMessage(from, { text: helpDetails });
 };
+
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
