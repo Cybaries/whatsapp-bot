@@ -11,8 +11,7 @@ async function startBot() {
         logger.info('🤖 Bot started successfully.');
     } catch (e) {
         logger.error({ err: e }, '❌ Bot failed to start.');
-    }
-    finally {
+    } finally {
         loadCommands(path.join(__dirname, 'commands'));
     }
 }

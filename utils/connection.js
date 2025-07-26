@@ -39,8 +39,6 @@ async function createConnection(mongo, restartCallback = () => { }) {
         getMessage: async () => null
     });
 
-    global.BOT_ID = sock.user?.id;
-
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
@@ -53,6 +51,7 @@ async function createConnection(mongo, restartCallback = () => { }) {
 
         if (connection === 'open') {
             logger.info('✅ WhatsApp connection opened');
+            global.BOT_ID = sock.user?.id;
             isReady = false;
             setBotReady(true);
             setTimeout(() => { isReady = true; }, 5000);
@@ -60,7 +59,7 @@ async function createConnection(mongo, restartCallback = () => { }) {
 
             if (isNewLogin) {
                 await sock.sendPresenceUpdate('available');
-                await sock.sendMessage(sock.user.id, { text: '🤖 Bot successfully reconnected and is now active.' });
+                await sock.sendMessage(BOT_ID, { text: '🤖 Bot successfully reconnected and is now active.' });
                 logger.info('🔁 New session initialized and notified');
             }
         }
