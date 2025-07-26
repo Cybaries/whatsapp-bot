@@ -11,7 +11,6 @@ const { logMessage, logger } = require('./logger');
 const { deleteStaleAuth } = require('./clearAuth.js');
 const {
     handleIncomingMessages,
-    handleReaction,
     setBotReady,
     setRestartCallback,
 } = require('./messageHandler');
@@ -86,14 +85,6 @@ async function createConnection(mongo, restartCallback = () => { }) {
                     console.log(`❌ Connection closed with code ${code}. Reconnecting...`);
                     return restartCallback();
             }
-        }
-    });
-
-    sock.ev.on('message-reaction', async r => {
-        try {
-            await handleReaction(sock, r);
-        } catch (e) {
-            logger.error({ err: e }, '❌ Reaction handler error');
         }
     });
 

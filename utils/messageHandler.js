@@ -79,8 +79,15 @@ async function handleIncomingMessages(sock, messages) {
     LAST_REPLY_TIMES.set(sender, now);
 }
 
+let restartCallback = () => { };
+
+function setRestartCallback(cb) {
+    restartCallback = cb;
+}
+
 module.exports = {
     handleIncomingMessages,
     setBotReady,
-    isBotReady
+    isBotReady,
+    setRestartCallback
 };
