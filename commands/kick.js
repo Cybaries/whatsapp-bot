@@ -1,31 +1,54 @@
-module.exports = async (sock, from, input, msg) => {
-    try {
+module.exports = {
+    config: {
+        command: 'kick',
+        aliases: [],
+        description: 'Remove a member from the group.',
+        usage: '!kick @user or reply with !kick',
+        category: 'moderation',
+        dm: false
+    },
+
+    handler: async (sock, from, input, msg) => {
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
 
         if (!isGroup) {
-            return await sock.sendMessage(from, { text: '❌ This command can only be used in groups.' });
+            return sock.sendMessage(from, {
+                text: '❌ This command can only be used in groups.'
+            }, { quoted: msg });
         }
 
         const groupMetadata = await sock.groupMetadata(from);
-        const admins = groupMetadata.participants.filter(p => p.admin).map(p => p.id);
+        const participants = groupMetadata.participants;
 
+        const admins = participants
+            .filter(p => p.admin)
+            .map(p => p.id);
 
-        const isAdmin = admins.includes(sender);
-        if (!isAdmin) {
-            return await sock.sendMessage(from, { text: '❌ Only group admins can use this command.' });
+        const isUserAdmin = admins.includes(sender);
+        const botId = sock.user.id;
+        const isBotAdmin = admins.includes(botId);
+
+        if (!isUserAdmin) {
+            return sock.sendMessage(from, {
+                text: '❌ Only group admins can use this command.'
+            }, { quoted: msg });
         }
 
-        // 🔍 Get mentioned or replied-to user
-        let targetId = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[ 0 ];
-        if (!targetId && msg.message?.extendedTextMessage?.contextInfo?.participant) {
-            targetId = msg.message.extendedTextMessage.contextInfo.participant;
+        if (!isBotAdmin) {
+            return sock.sendMessage(from, {
+                text: '❌ I need to be an admin to kick members.'
+            }, { quoted: msg });
         }
+
+        // Extract target user from mention or reply
+        const ctx = msg.message?.extendedTextMessage?.contextInfo;
+        const targetId = ctx?.mentionedJid?.[ 0 ] || ctx?.participant;
 
         if (!targetId) {
-            return await sock.sendMessage(from, {
-                text: '⚠️ Please tag or reply to the user you want to kick.\n🧾 _Usage:_ `!kick @user` or reply with `!kick`'
-            });
+            return sock.sendMessage(from, {
+                text: '⚠️ Please tag or reply to the user you want to kick.\n\n🧾 Usage: `!kick @user` or reply with `!kick`'
+            }, { quoted: msg });
         }
 
         // 🔍 Normalize bot and target ID
@@ -46,7 +69,7 @@ module.exports = async (sock, from, input, msg) => {
             mentions: [ targetId ]
         });
 
-    } catch (err) {
+    } catch(err) {
         await sock.sendMessage(from, {
             text: '❌ Failed to kick the user. Make sure I am an admin and the user exists.'
         });

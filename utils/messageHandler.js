@@ -1,216 +1,86 @@
-const path = require('path');
-const fs = require('fs');
 const { incrementMessageCount } = require('./messageCounter');
 const { logMessage, logger } = require('./logger');
+const { getCommand } = require('./commandHandler');
 
 const PREFIX = '!';
 const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '15000');
 const ALLOWED_USERS = (process.env.ALLOWED_USERS || '').split(',').filter(Boolean);
 const ALLOWED_GROUPS = (process.env.ALLOWED_GROUPS || '').split(',').filter(Boolean);
-const retryAttempts = new Map();
 
 const userCooldowns = new Map();
-const userRequestCount = new Map();
-let totalRequests = 0;
+const LAST_REPLY_TIMES = new Map();
 let botReady = false;
-const retryQueue = [];
-const MAX_RETRIES = 3;
 
-function setBotReady(status) {
-    botReady = status;
-}
-
-function isBotReady() {
-    return botReady;
-}
-
-const messageQueue = [];
-let processingQueue = false;
-let restartCallback = () => { };
-
-function setRestartCallback(cb) {
-    restartCallback = cb;
-}
-
-function isSocketAlive(sock) {
-    return !!sock?.user && !sock?.ev?.isClosed;
-}
-
-async function processRetryQueue() {
-    if (retryQueue.length === 0) return;
-
-    logger.info(`🔁 Processing retry queue with ${retryQueue.length} messages...`);
-
-    const toRetry = [ ...retryQueue ];
-    retryQueue.length = 0;
-
-    for (const item of toRetry) {
-        if (item.attempts >= MAX_RETRIES) {
-            logger.warn(`❌ Dropping message after ${MAX_RETRIES} attempts: ${item.command}`);
-            continue;
-        }
-
-        try {
-            logger.info(`🔁 Retrying command: ${item.command} (Attempt ${item.attempts + 1})`);
-            messageQueue.push({ ...item });
-            processQueue();
-        } catch (err) {
-            item.attempts += 1;
-            retryQueue.push(item);
-        }
-    }
-}
-
-async function processQueue() {
-    if (processingQueue || messageQueue.length === 0) return;
-    processingQueue = true;
-
-    while (messageQueue.length > 0) {
-        const { sock, from, command, input, msg, sender, isGroup } = messageQueue.shift();
-
-        try {
-            if (!isSocketAlive(sock)) {
-                logger.warn('🛑 Skipping command due to closed socket.');
-                continue;
-            }
-
-            logMessage({ from, isGroup, command, input, userId: sender });
-            logger.info({ type: 'command', from, isGroup, command, input, userId: sender }, 'Processing command from queue');
-
-            totalRequests++;
-            userRequestCount.set(sender, (userRequestCount.get(sender) || 0) + 1);
-
-            const cmdFile = path.join(__dirname, '../commands', `${command.toLowerCase()}.js`);
-            if (fs.existsSync(cmdFile)) {
-                await require(cmdFile)(sock, from, input, msg);
-            } else {
-                await sock.sendMessage(from, { text: `❌ Unknown command: ${command}` });
-                logger.warn(`⚠️ Unknown command: !${command}`);
-            }
-        } catch (err) {
-            logger.error({ err }, `❌ Error running command from queue: ${command}`);
-            try {
-                await sock.sendMessage(from, { text: '⚠️ Error executing command.' });
-            } catch (sendErr) {
-                logger.error({ err: sendErr }, '❌ Failed to send fallback error message.');
-            }
-        }
-    }
-
-    processingQueue = false;
-}
+function setBotReady(status) { botReady = status; }
+function isBotReady() { return botReady; }
 
 async function handleIncomingMessages(sock, messages) {
-    if (!isBotReady()) {
-        logger.warn('⏸ Bot not ready, deferring message processing...');
-        return;
-    }
+    // console.log([ ...require('./commandHandler').commandMap.keys() ]);
+    if (!isBotReady()) return;
 
     const msg = messages[ 0 ];
-    if (!msg?.message) return;
-
     const from = msg.key.remoteJid;
     const isGroup = from.endsWith('@g.us');
     const sender = msg.key.participant || msg.key.remoteJid;
 
-    // 🛡️ Early exit for status broadcast or unauthorized senders/groups
-    if (sender.endsWith('@g.us')) return;
+    if (!msg?.message || sender.endsWith('@g.us')) return;
 
-    const isAllowed =
-        (isGroup && ALLOWED_GROUPS.includes(from)) ||
-        (!isGroup && ALLOWED_USERS.includes(from));
+    const allowed = isGroup ? ALLOWED_GROUPS.includes(from) : ALLOWED_USERS.includes(from);
+    if (!allowed) return;
 
-    if (!isAllowed) return;
+    const text = msg.message.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '';
+    if (!text.startsWith(PREFIX)) return;
 
-    try {
-        if (isGroup) {
-            await incrementMessageCount(from, sender, sock, msg);
-        }
+    const [ commandName, ...args ] = text.slice(PREFIX.length).trim().split(/\s+/);
+    if (Date.now() - (userCooldowns.get(sender) || 0) < COOLDOWN_MS) return;
+    userCooldowns.set(sender, Date.now());
 
-        const text = msg.message?.conversation ||
-            msg.message?.extendedTextMessage?.text ||
-            msg.message?.imageMessage?.caption || '';
-
-        if (!text.startsWith(PREFIX)) return;
-
-        const [ command, ...args ] = text.slice(PREFIX.length).trim().split(/\s+/);
-        const input = args.join(' ');
-
-        const last = userCooldowns.get(sender) || 0;
-        if (Date.now() - last < COOLDOWN_MS) return;
-        userCooldowns.set(sender, Date.now());
-
-        messageQueue.push({ sock, from, command, input, msg, sender, isGroup });
-        processQueue();
-
-    } catch (err) {
-        const remoteJid = msg?.key?.remoteJid;
-        const messageId = msg?.key?.id;
-
-        const msgStr = err?.message || '';
-        const isDecryptionError = /decrypt|undecryptable|no session|senderkey/i.test(msgStr);
-
-        if (isDecryptionError && remoteJid && messageId) {
-            const previousAttempt = retryAttempts.get(messageId) || 0;
-
-            if (previousAttempt < 1) {
-                retryAttempts.set(messageId, previousAttempt + 1);
-                logger.warn(`⚠️ First decryption attempt failed for ${messageId}. Waiting for retry...`);
-
-                retryQueue.push({
-                    sock,
-                    from: remoteJid,
-                    command: 'unknown',
-                    input: '',
-                    msg,
-                    sender: msg.key.participant || msg.key.remoteJid,
-                    isGroup: remoteJid.endsWith('@g.us'),
-                    attempts: previousAttempt + 1
-                });
-
-                return;
-            }
-
-            retryAttempts.delete(messageId);
-
-            const isAllowed =
-                (isGroup && ALLOWED_GROUPS.includes(remoteJid)) ||
-                (!isGroup && ALLOWED_USERS.includes(remoteJid));
-
-            if (!isAllowed) return;
-
-            const responseText = '⚠️ Could not decrypt your message. Please resend the command.';
-
-            try {
-                await sock.sendMessage(remoteJid, {
-                    text: responseText,
-                }, msg?.message ? { quoted: msg } : undefined);
-            } catch (err) {
-                if (/prekey|session/i.test(err.message)) {
-                    logger.warn(`⚠️ Session error for ${remoteJid}, retrying...`);
-                    await new Promise(res => setTimeout(res, 500));
-                    try {
-                        await sock.sendMessage(remoteJid, {
-                            text: responseText,
-                        }, msg?.message ? { quoted: msg } : undefined);
-                    } catch (innerErr) {
-                        logger.error({ err: innerErr }, '❌ Retry failed after session refresh.');
-                    }
-                } else {
-                    logger.error({ err }, '❌ Failed to send decryption error message.');
-                }
-            }
-            return;
-        }
-
-        logger.error({ err }, '❌ Unexpected error in handleIncomingMessages');
+    const commandModule = getCommand(commandName);
+    if (!commandModule) {
+        await sock.sendMessage(from, { text: `❌ Unknown command: ${commandName}` });
+        return;
     }
+
+    const { config, handler } = commandModule;
+    if (!config.dm && !isGroup) {
+        await sock.sendMessage(from, { text: '❌ This command can only be used in groups.' });
+        return;
+    }
+
+    await incrementMessageCount(from, sender, sock, msg);
+    logMessage({ from, isGroup, command: commandName, input: args.join(' '), userId: sender });
+
+    const now = Date.now();
+    // if last sent message was older than 5 minutes, encryption keys sync again
+    // 5 * 60 * 1000 = 300000
+    if (now - (LAST_REPLY_TIMES.get(sender) || 0) > 300000) {
+        try {
+            const dummyMsg = await sock.sendMessage(BOT_ID, { text: '.' });
+            await new Promise(r => setTimeout(r, 4000));
+            await sock.sendMessage(from, {
+                delete: {
+                    remoteJid: from,
+                    fromMe: true,
+                    id: dummyMsg.key.id,
+                    participant: dummyMsg.key.participant || undefined
+                }
+            });
+        } catch (err) {
+            logger.warn({ err }, `⚠️ Failed refresh encryption for ${sender}`);
+        }
+    }
+    try {
+        await handler(sock, from, args.join(' '), msg, { sender, isGroup, command: config.command });
+    } catch (err) {
+        logger.error({ err }, `❌ Error in command: ${commandName}`);
+        await sock.sendMessage(from, { text: '⚠️ Error executing command.' }).catch(() => { });
+    }
+
+    LAST_REPLY_TIMES.set(sender, now);
 }
 
 module.exports = {
     handleIncomingMessages,
-    setRestartCallback,
     setBotReady,
-    isBotReady,
-    processRetryQueue
+    isBotReady
 };
