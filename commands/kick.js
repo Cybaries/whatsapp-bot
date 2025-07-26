@@ -26,7 +26,6 @@ module.exports = {
             .map(p => p.id);
 
         const isUserAdmin = admins.includes(sender);
-        const botId = sock.user.id;
         const isBotAdmin = admins.includes(botId);
 
         if (!isUserAdmin) {
@@ -69,9 +68,5 @@ module.exports = {
             mentions: [ targetId ]
         });
 
-    } catch(err) {
-        await sock.sendMessage(from, {
-            text: '❌ Failed to kick the user. Make sure I am an admin and the user exists.'
-        });
     }
 };
