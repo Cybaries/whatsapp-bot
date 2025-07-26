@@ -55,7 +55,7 @@ async function handleIncomingMessages(sock, messages) {
     // 5 * 60 * 1000 = 300000
     if (now - (LAST_REPLY_TIMES.get(sender) || 0) > 300000) {
         try {
-            const dummyMsg = await sock.sendMessage(BOT_ID, { text: '.' });
+            const dummyMsg = await sock.sendMessage(from, { text: '🔑 syncing...' });
             await new Promise(r => setTimeout(r, 4000));
             await sock.sendMessage(from, {
                 delete: {

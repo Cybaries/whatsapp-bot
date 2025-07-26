@@ -85,7 +85,7 @@ module.exports = {
             const senderName = await getDisplayName(sock, senderId);
             const taggerMention = `@${senderName.split('@')[ 1 ]}`;
             const readableMentionType = mentionType === 'everyone' ? '@everyone' : mentionType;
-            const displayMessage = messageBody || '(No message provided)';
+            const displayMessage = messageBody ? messageBody : '';
 
             const finalMessage = `💬 *Message:* ${displayMessage}\n\n📣 *Tagger:* ${taggerMention}\n📧 *Tags:* ${readableMentionType}`;
 
