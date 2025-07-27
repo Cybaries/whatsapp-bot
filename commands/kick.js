@@ -26,7 +26,9 @@ module.exports = {
             .map(p => p.id);
 
         const isUserAdmin = admins.includes(sender);
-        const isBotAdmin = admins.includes(botId);
+        const botFullId = BOT_ID; // e.g. 91xxxxx:94@s.whatsapp.net
+        const botId = botFullId.split(':')[ 0 ]; // e.g. 91xxxxx
+        const isBotAdmin = admins.includes(`${botId}@s.whatsapp.net`);
 
         if (!isUserAdmin) {
             return sock.sendMessage(from, {
@@ -50,9 +52,6 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // 🔍 Normalize bot and target ID
-        const botFullId = sock.user.id; // e.g. 91xxxxx:94@s.whatsapp.net
-        const botId = botFullId.split(':')[ 0 ]; // e.g. 91xxxxx
         const normalizedTarget = targetId.split('@')[ 0 ]; // e.g. 91xxxxx
 
         if (normalizedTarget === botId) {
