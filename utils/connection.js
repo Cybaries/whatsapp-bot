@@ -41,6 +41,41 @@ async function createConnection(mongo, restartCallback = () => { }) {
 
     sock.ev.on('creds.update', saveCreds);
 
+    sock.ev.on('group-participants.update', async (update) => {
+        const { id: groupId, participants, action } = update;
+
+        if (action === 'add') {
+            for (const participant of participants) {
+                try {
+                    const contact = await sock.onWhatsApp(participant);
+                    const username = contact?.[ 0 ]?.notify || participant.split('@')[ 0 ];
+                    const groupMetadata = await sock.groupMetadata(groupId);
+                    const groupName = groupMetadata.subject;
+                    await sock.sendMessage(groupId, {
+                        text: `
+╭───────────────★
+│ 👋  *Welcome, @${participant.split('@')[ 0 ]}!*  
+│ 
+│ 🎉 We're glad to have you in *${groupName}*!
+│ 
+│ 💬 Feel free to:
+│ ├─ Introduce yourself
+│ ├─ Ask questions
+│ └─ Join the conversation
+│ 
+│ 🤝 Let's grow together!
+╰───────────────★
+`,
+                        mentions: [ participant ]
+                    });
+                } catch (err) {
+                    console.error('❌ Error sending welcome message:', err);
+                }
+            }
+        }
+    });
+
+
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr, isNewLogin } = update;
 
