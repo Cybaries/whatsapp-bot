@@ -9,6 +9,7 @@ const {
 const { Boom } = require('@hapi/boom');
 const { logMessage, logger } = require('../utils/logger.js');
 const { deleteStaleAuth } = require('../utils/clearAuth.js');
+const ALLOWED_GROUPS = (process.env.ALLOWED_GROUPS || '').split(',').filter(Boolean);
 const {
     handleIncomingMessages,
     setBotReady,
