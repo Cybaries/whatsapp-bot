@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { getDb } = require('../utils/mongo');
+const { getDb } = require('../Handlers/mongo');
 
 const BASE_URL = 'https://api.rei.my.id/animequotes';
 
@@ -53,9 +53,7 @@ module.exports = {
 
         if (args[ 0 ]?.toLowerCase() === 'character') {
             if (args.length < 2) {
-                return sock.sendMessage(from, {
-                    text: `⚠️ Usage: !animequote character <name>`
-                }, { quoted: msg });
+                return { text: `⚠️ Usage: !animequote character <name>` };
             }
             query.character = args.slice(1).join(' ');
         } else if (args.length === 1 && args[ 0 ] !== '') {
@@ -76,9 +74,7 @@ module.exports = {
 
             const quotes = data?.data || [];
             if (!quotes.length) {
-                return sock.sendMessage(from, {
-                    text: `😕 No quotes found. Try a different anime/character.`
-                }, { quoted: msg });
+                return { text: `😕 No quotes found. Try a different anime/character.` };
             }
 
             const quote = quotes[ Math.floor(Math.random() * quotes.length) ];
@@ -87,13 +83,11 @@ module.exports = {
                 `👤 ${quote.character}\n` +
                 `🎬 ${quote.anime}`;
 
-            await sock.sendMessage(from, { text: message }, { quoted: msg });
+            return { text: message };
 
         } catch (err) {
             console.error('❌ Quote fetch error:', err);
-            await sock.sendMessage(from, {
-                text: `⚠️ Failed to fetch quote. Please try again later.`
-            }, { quoted: msg });
+            return { text: `⚠️ Failed to fetch quote. Please try again later.` };
         }
     }
 };

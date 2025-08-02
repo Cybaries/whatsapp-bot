@@ -1,9 +1,9 @@
 // startBot.js
 const path = require('path');
-const mongo = require('./utils/mongo');
-const { createConnection } = require('./utils/connection');
+const mongo = require('./Handlers/mongo');
+const { createConnection } = require('./Handlers/connection');
 const { logger } = require('./utils/logger');
-const { loadCommands } = require('./utils/commandHandler');
+const { loadCommands } = require('./Handlers/commandHandler');
 
 async function startBot() {
     try {

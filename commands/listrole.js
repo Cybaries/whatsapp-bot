@@ -28,39 +28,39 @@ module.exports = {
                 const allRoles = await roles.find({ groupId: from }).toArray();
 
                 if (!allRoles.length) {
-                    return sock.sendMessage(from, {
+                    return {
                         text: '📭 No roles have been assigned in this group yet.'
-                    }, { quoted: msg });
+                    };
                 }
 
                 const roleList = allRoles.map(r => `• ${r.role}`).join('\n');
 
-                return sock.sendMessage(from, {
+                return {
                     text: `📜 *Roles in this group:*\n${roleList}`
-                }, { quoted: msg });
+                };
             }
 
             // 🔹 Input present: show members in a role
             const roleDoc = await roles.findOne({ groupId: from, role: roleName });
 
             if (!roleDoc || !roleDoc.members?.length) {
-                return sock.sendMessage(from, {
+                return {
                     text: `❌ No users found with role *${roleName}*.`
-                }, { quoted: msg });
+                };
             }
 
             const mentionList = roleDoc.members.map(id => `• @${id.split('@')[ 0 ]}`).join('\n');
 
-            return sock.sendMessage(from, {
+            return {
                 text: `👥 *Members with role ${roleName}:*\n${mentionList}`,
                 mentions: roleDoc.members
-            }, { quoted: msg });
+            };
 
         } catch (err) {
             console.error('❌ listrole error:', err);
-            await sock.sendMessage(from, {
+            return {
                 text: '❌ Could not fetch role list. Please try again later.'
-            }, { quoted: msg });
+            };
         } finally {
             await client.close();
         }

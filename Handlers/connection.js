@@ -19,6 +19,16 @@ const {
 
 let latestQR = '';
 let isReady = false;
+let BOT_ID = null;
+
+function setBotId(id) {
+    BOT_ID = id;
+    global.BOT_ID = id;
+}
+
+function getBotId() {
+    return BOT_ID;
+}
 
 function getLatestQR() {
     return latestQR;
@@ -89,7 +99,7 @@ async function createConnection(mongo, restartCallback = () => { }) {
 
         if (connection === 'open') {
             logger.info('✅ WhatsApp connection opened');
-            global.BOT_ID = sock.user?.id;
+            setBotId(sock.user?.id);
             isReady = false;
             setBotReady(true);
             setTimeout(() => { isReady = true; }, 5000);
@@ -133,4 +143,4 @@ async function createConnection(mongo, restartCallback = () => { }) {
     return sock;
 }
 
-module.exports = { createConnection, getLatestQR };
+module.exports = { createConnection, getLatestQR, getBotId };

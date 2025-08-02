@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const qrcode = require('qrcode');
-const { getLatestQR } = require('./utils/connection');
+const { getLatestQR } = require('./Handlers/connection');
 const { logger } = require('./utils/logger');
 const { startBot } = require('./startBot'); // 👈 import it here
 

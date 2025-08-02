@@ -1,4 +1,4 @@
-const { commandMap, aliasMap } = require('../utils/commandHandler');
+const { commandMap, aliasMap } = require('../Handlers/commandHandler');
 
 module.exports = {
     config: {
@@ -34,7 +34,7 @@ module.exports = {
             }
 
             text += `🗃️ *Tip:* Use \`!help <command>\` for more info.`;
-            return sock.sendMessage(from, { text });
+            return { text };
         }
 
         // First try finding command
@@ -49,7 +49,7 @@ module.exports = {
                 `🍥 *Aliases:* ${aliases.length ? aliases.map(capitalize).join(', ') : 'None'}\n` +
                 `📬 *DM Allowed:* ${dm ? 'Yes' : 'No'}`;
 
-            return sock.sendMessage(from, { text: helpText });
+            return { text: helpText };
         }
 
         // Check if it's a category
@@ -62,12 +62,12 @@ module.exports = {
             for (const c of matchedCmds) {
                 text += `🔹 *${c.config.command}* – ${c.config.description}\n🧾 _Usage:_ \`${c.config.usage}\`\n\n`;
             }
-            return sock.sendMessage(from, { text });
+            return { text };
         }
 
-        return sock.sendMessage(from, {
+        return {
             text: `❌ No command or category named "${query}" found.`
-        });
+        };
     }
 };
 

@@ -14,9 +14,9 @@ module.exports = {
 
     handler: async (sock, from, input, msg) => {
         if (!from.endsWith('@g.us')) {
-            return sock.sendMessage(from, {
+            return {
                 text: '❌ This command can only be used in *group chats*.'
-            }, { quoted: msg });
+            };
         }
 
         const senderId = getSenderId(msg);
@@ -25,9 +25,9 @@ module.exports = {
         roleName = roleName?.toUpperCase();
 
         if (!roleName || mentions.length === 0) {
-            return sock.sendMessage(from, {
+            return {
                 text: '⚠️ Usage: `!assign <RoleName> @mention1 @mention2 ...`'
-            }, { quoted: msg });
+            };
         }
 
         try {
@@ -38,9 +38,9 @@ module.exports = {
             );
 
             if (!isAdmin) {
-                return sock.sendMessage(from, {
+                return {
                     text: '🚫 Only *group admins* can assign roles.'
-                }, { quoted: msg });
+                };
             }
 
             // 🔗 Connect to MongoDB
@@ -55,17 +55,17 @@ module.exports = {
                 { upsert: true }
             );
 
-            await sock.sendMessage(from, {
+            const response = {
                 text: `✅ Assigned role *${roleName}* to ${mentions.length} user(s).`
-            }, { quoted: msg });
+            };
 
             await client.close();
-
+            return response;
         } catch (err) {
             console.error('❌ Role assign error:', err);
-            await sock.sendMessage(from, {
+            return {
                 text: '❌ Could not assign role. Please try again later.'
-            }, { quoted: msg });
+            };
         }
     }
 };

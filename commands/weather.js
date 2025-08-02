@@ -14,9 +14,9 @@ module.exports = {
 
     handler: async (sock, from, input, msg) => {
         if (!input) {
-            return sock.sendMessage(from, {
+            return {
                 text: '❌ Please provide a city name.\n\n📌 Example: *!weather Delhi*'
-            }, { quoted: msg });
+            };
         }
 
         const apiKey = process.env.WEATHER_API_KEY;
@@ -33,12 +33,12 @@ module.exports = {
                 `- 💧 Humidity: *${weather.current.humidity}%*\n` +
                 `- 🌬️ Wind: *${weather.current.wind_kph} km/h*`;
 
-            await sock.sendMessage(from, { text: responseText }, { quoted: msg });
+            return { text: responseText };
         } catch (err) {
             console.error(err.response?.data || err.message || err);
-            await sock.sendMessage(from, {
+            return {
                 text: '⚠️ Could not fetch weather info. Make sure the city name is correct.'
-            }, { quoted: msg });
+            };
         }
     }
 };

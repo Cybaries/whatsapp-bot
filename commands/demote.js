@@ -1,4 +1,5 @@
 const { getSenderId } = require('../utils/helpers');
+const { getBotId } = require('../Handlers/connection')
 
 module.exports = {
     config: {
@@ -15,66 +16,58 @@ module.exports = {
         const senderId = getSenderId(msg);
 
         if (!isGroup) {
-            return sock.sendMessage(from, {
-                text: '❌ This command can only be used in group chats.'
-            }, { quoted: msg });
+            return { text: '❌ This command can only be used in group chats.' };
         }
 
         const metadata = await sock.groupMetadata(from);
         const participants = metadata.participants;
 
         const sender = participants.find(p => p.id === senderId);
-        const botId = sock.user.id;
+        const BOT_ID = getBotId().split(':')[ 0 ];
+        const botId = `${BOT_ID}@s.whatsapp.net`;
+        console.log(botId);
         const bot = participants.find(p => p.id === botId);
 
         const isSenderAdmin = sender?.admin === 'admin' || sender?.admin === 'superadmin';
         const isBotAdmin = bot?.admin === 'admin' || bot?.admin === 'superadmin';
 
         if (!isSenderAdmin) {
-            return sock.sendMessage(from, {
-                text: '🚫 Only group admins can use this command.'
-            }, { quoted: msg });
+            return { text: '🚫 Only group admins can use this command.' };
         }
 
         if (!isBotAdmin) {
-            return sock.sendMessage(from, {
-                text: '❌ I need to be a group admin to demote members.'
-            }, { quoted: msg });
+            return { text: '❌ I need to be a group admin to demote members.' };
         }
 
         const ctx = msg.message?.extendedTextMessage?.contextInfo;
         const targetId = ctx?.mentionedJid?.[ 0 ] || ctx?.participant;
 
         if (!targetId) {
-            return sock.sendMessage(from, {
+            return {
                 text: '⚠️ Please mention or reply to the admin you want to demote.\n\n🧾 Usage: `!demote @user`'
-            }, { quoted: msg });
+            };
         }
 
         const target = participants.find(p => p.id === targetId);
         if (!target) {
-            return sock.sendMessage(from, {
-                text: '❓ User not found in this group.'
-            }, { quoted: msg });
+            return { text: '❓ User not found in this group.' };
         }
 
         if (!target.admin) {
-            return sock.sendMessage(from, {
-                text: 'ℹ️ That user is not an admin.'
-            }, { quoted: msg });
+            return { text: 'ℹ️ That user is not an admin.' };
         }
 
         try {
             await sock.groupParticipantsUpdate(from, [ targetId ], 'demote');
-            await sock.sendMessage(from, {
+            return {
                 text: `❎ @${targetId.split('@')[ 0 ]} has been *demoted* from admin.`,
                 mentions: [ targetId ]
-            });
+            };
         } catch (err) {
             console.error('Demote error:', err);
-            await sock.sendMessage(from, {
+            return {
                 text: '❌ Failed to demote user. Check if I still have admin rights.'
-            }, { quoted: msg });
+            };
         }
     }
 };

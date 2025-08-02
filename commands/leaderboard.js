@@ -1,4 +1,4 @@
-const { getDb } = require('../utils/mongo');
+const { getDb } = require('../Handlers/mongo');
 const { getRank } = require('../utils/rankUtils');
 const { getDisplayName } = require('../utils/getDisplayName');
 
@@ -14,10 +14,9 @@ module.exports = {
 
     handler: async (sock, from, input, msg) => {
         if (!from.endsWith('@g.us')) {
-            await sock.sendMessage(from, {
+            return {
                 text: '❌ This command only works in groups.'
-            }, { quoted: msg });
-            return;
+            };
         }
 
         const collection = getDb().collection('messageStats');
@@ -30,10 +29,9 @@ module.exports = {
                 .toArray();
 
             if (!top.length) {
-                await sock.sendMessage(from, {
+                return {
                     text: '📉 No XP data yet.'
-                }, { quoted: msg });
-                return;
+                };
             }
 
             let leaderboardText = `🏆 *Top 10 XP Leaders*\n\n`;
@@ -52,16 +50,16 @@ module.exports = {
                 mentions.push(userId);
             }
 
-            await sock.sendMessage(from, {
+            return {
                 text: leaderboardText,
                 mentions
-            }, { quoted: msg });
+            };
 
         } catch (error) {
             console.error('❌ leaderboard error:', error);
-            await sock.sendMessage(from, {
+            return {
                 text: '❌ Failed to fetch leaderboard. Try again later.'
-            }, { quoted: msg });
+            };
         }
     }
 };

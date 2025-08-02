@@ -1,5 +1,5 @@
 const pino = require('pino');
-const mongo = require('./mongo');
+const mongo = require('../Handlers/mongo');
 
 const isProd = process.env.NODE_ENV === 'production';
 

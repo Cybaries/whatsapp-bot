@@ -1,8 +1,9 @@
 // commands/ping.js
 
-const mongo = require('../utils/mongo');
+const mongo = require('../Handlers/mongo');
 const { getSenderId } = require('../utils/helpers');
 const { getDisplayName } = require('../utils/getDisplayName');
+const { getBotId } = require('../Handlers/connection')
 
 const pingCooldowns = new Map(); // groupId -> lastTimestamp
 
@@ -18,9 +19,9 @@ module.exports = {
 
     handler: async (sock, from, input, msg) => {
         if (!from.endsWith('@g.us')) {
-            return sock.sendMessage(from, {
+            return {
                 text: '❌ The `!ping` command can only be used in group chats.'
-            });
+            };
         }
 
         try {
@@ -31,9 +32,9 @@ module.exports = {
             const isAdmin = senderInfo?.admin === 'admin' || senderInfo?.admin === 'superadmin';
 
             if (!isAdmin) {
-                return sock.sendMessage(from, {
+                return {
                     text: '🚫 Only *admins* can use `!ping` in this group.'
-                });
+                };
             }
 
             // ⏱ Group Cooldown (60 sec)
@@ -41,13 +42,13 @@ module.exports = {
             const lastPing = pingCooldowns.get(from) || 0;
             if (now - lastPing < 60_000) {
                 const remaining = Math.ceil((60_000 - (now - lastPing)) / 1000);
-                return sock.sendMessage(from, {
+                return {
                     text: `⏳ Please wait ${remaining}s before using \`!ping\` again.`
-                });
+                };
             }
             pingCooldowns.set(from, now);
 
-            const botId = (global.BOT_ID || '').split(':')[ 0 ];
+            const botId = (getBotId() || '').split(':')[ 0 ];
             const inputParts = input.trim().split(/\s+/);
             const [ firstWord, ...restWords ] = inputParts;
 
@@ -68,9 +69,9 @@ module.exports = {
                     mentionType = `@${roleName}`;
                     messageBody = restWords.join(' ').trim();
                 } else {
-                    return sock.sendMessage(from, {
+                    return {
                         text: `❌ No users found with the role \`${roleName}\`.`
-                    });
+                    };
                 }
             } else {
                 // Ping all group members
@@ -89,17 +90,17 @@ module.exports = {
 
             const finalMessage = `💬 *Message:* ${displayMessage}\n\n📣 *Tagger:* ${taggerMention}\n📧 *Tags:* ${readableMentionType}`;
 
-            await sock.sendMessage(from, {
+            return {
                 text: finalMessage,
                 mentions
-            }, { quoted: msg });
+            };
 
-            console.log(`✅ !ping sent to ${mentions.length} members with role "${mentionType}"`);
+            // console.log(`✅ !ping sent to ${mentions.length} members with role "${mentionType}"`);
         } catch (err) {
             console.error('❌ Error in !ping command:', err);
-            await sock.sendMessage(from, {
+            return {
                 text: '⚠️ Could not send ping. Something went wrong.'
-            });
+            };
         }
     }
 };

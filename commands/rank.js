@@ -18,8 +18,7 @@ module.exports = {
     handler: async (sock, from, input, msg) => {
         const isGroup = from.endsWith('@g.us');
         if (!isGroup) {
-            await sock.sendMessage(from, { text: '❌ This command only works in groups.' });
-            return;
+            return { text: '❌ This command only works in groups.' };
         }
 
         let targetId;
@@ -58,10 +57,10 @@ module.exports = {
 
         const caption = `🌟 *${displayName}'s Rank Card*\n\n🏅 Rank: ${rank.emoji} *${rank.title}*\n📊 XP: *${xp}* • Messages: *${messageCount}*`;
 
-        await sock.sendMessage(from, {
+        return {
             image: imageBuffer,
             caption,
             mentions: [ targetId ],
-        }, { quoted: msg });
+        };
     }
 };

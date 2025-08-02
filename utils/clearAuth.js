@@ -1,4 +1,4 @@
-const mongo = require('./mongo');
+const mongo = require('../Handlers/mongo');
 
 async function deleteStaleAuth() {
     try {

@@ -1,4 +1,4 @@
-const { getDb } = require('../utils/mongo');
+const { getDb } = require('../Handlers/mongo');
 
 const CACHE_DURATION_HOURS = 24;
 

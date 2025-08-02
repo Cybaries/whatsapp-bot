@@ -1,6 +1,7 @@
-const { incrementMessageCount } = require('./messageCounter');
-const { logMessage, logger } = require('./logger');
+const { incrementMessageCount } = require('../utils/messageCounter');
+const { logMessage, logger } = require('../utils/logger');
 const { getCommand } = require('./commandHandler');
+const { sendAndTrack } = require('./SyncHandler');
 
 const PREFIX = '!';
 const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '15000');
@@ -8,14 +9,17 @@ const ALLOWED_USERS = (process.env.ALLOWED_USERS || '').split(',').filter(Boolea
 const ALLOWED_GROUPS = (process.env.ALLOWED_GROUPS || '').split(',').filter(Boolean);
 
 const userCooldowns = new Map();
-const LAST_REPLY_TIMES = new Map();
 let botReady = false;
 
-function setBotReady(status) { botReady = status; }
-function isBotReady() { return botReady; }
+function setBotReady(status) {
+    botReady = status;
+}
+
+function isBotReady() {
+    return botReady;
+}
 
 async function handleIncomingMessages(sock, messages) {
-    // console.log([ ...require('./commandHandler').commandMap.keys() ]);
     if (!isBotReady()) return;
 
     const msg = messages[ 0 ];
@@ -28,7 +32,12 @@ async function handleIncomingMessages(sock, messages) {
     const allowed = isGroup ? ALLOWED_GROUPS.includes(from) : ALLOWED_USERS.includes(from);
     if (!allowed) return;
 
-    const text = msg.message.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '';
+    const text =
+        msg.message.conversation ||
+        msg.message?.extendedTextMessage?.text ||
+        msg.message?.imageMessage?.caption ||
+        '';
+
     if (!text.startsWith(PREFIX)) return;
 
     const [ commandName, ...args ] = text.slice(PREFIX.length).trim().split(/\s+/);
@@ -37,46 +46,28 @@ async function handleIncomingMessages(sock, messages) {
 
     const commandModule = getCommand(commandName);
     if (!commandModule) {
-        await sock.sendMessage(from, { text: `❌ Unknown command: ${commandName}` });
+        await sendAndTrack(sock, from, { text: `❌ Unknown command: ${commandName}` }, sender, msg);
         return;
     }
 
     const { config, handler } = commandModule;
+
     if (!config.dm && !isGroup) {
-        await sock.sendMessage(from, { text: '❌ This command can only be used in groups.' });
+        await sendAndTrack(sock, from, { text: '❌ This command can only be used in groups.' }, sender, msg);
         return;
     }
 
     await incrementMessageCount(from, sender, sock, msg);
     logMessage({ from, isGroup, command: commandName, input: args.join(' '), userId: sender });
 
-    const now = Date.now();
-    // if last sent message was older than 5 minutes, encryption keys sync again
-    // 5 * 60 * 1000 = 300000
-    if (now - (LAST_REPLY_TIMES.get(sender) || 0) > 300000) {
-        try {
-            const dummyMsg = await sock.sendMessage(from, { text: '🔑 syncing...' });
-            await new Promise(r => setTimeout(r, 4000));
-            await sock.sendMessage(from, {
-                delete: {
-                    remoteJid: from,
-                    fromMe: true,
-                    id: dummyMsg.key.id,
-                    participant: dummyMsg.key.participant || undefined
-                }
-            });
-        } catch (err) {
-            logger.warn({ err }, `⚠️ Failed refresh encryption for ${sender}`);
-        }
-    }
     try {
-        await handler(sock, from, args.join(' '), msg, { sender, isGroup, command: config.command });
+        const response = await handler(sock, from, args.join(' '), msg, { sender, isGroup, command: config.command });
+        console.log(response);
+        await sendAndTrack(sock, from, response, sender, msg); // No need to manage LAST_REPLY_TIMES here
     } catch (err) {
         logger.error({ err }, `❌ Error in command: ${commandName}`);
-        await sock.sendMessage(from, { text: '⚠️ Error executing command.' }).catch(() => { });
+        await sendAndTrack(sock, from, { text: '⚠️ Error executing command.' }, sender, msg).catch(() => { });
     }
-
-    LAST_REPLY_TIMES.set(sender, now);
 }
 
 let restartCallback = () => { };

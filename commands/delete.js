@@ -13,9 +13,7 @@ module.exports = {
         const senderId = msg.key.participant || msg.key.remoteJid;
 
         if (!isGroup) {
-            return sock.sendMessage(from, {
-                text: '❌ This command can only be used in *group chats*.'
-            }, { quoted: msg });
+            return { text: '❌ This command can only be used in *group chats*.' };
         }
 
         const metadata = await sock.groupMetadata(from);
@@ -23,25 +21,21 @@ module.exports = {
         const isSenderAdmin = admins.includes(senderId);
 
         if (!isSenderAdmin) {
-            return sock.sendMessage(from, {
-                text: '🚫 Only *group admins* can use this command.'
-            }, { quoted: msg });
+            return { text: '🚫 Only *group admins* can use this command.' };
         }
 
         const botId = sock.user.id.split(':')[ 0 ] + '@s.whatsapp.net';
         const isBotAdmin = admins.includes(botId);
 
         if (!isBotAdmin) {
-            return sock.sendMessage(from, {
-                text: '⚠️ I need to be an *admin* to delete messages.'
-            }, { quoted: msg });
+            return { text: '⚠️ I need to be an *admin* to delete messages.' };
         }
 
         const quoted = msg.message?.extendedTextMessage?.contextInfo;
         if (!quoted?.stanzaId || !quoted?.participant) {
-            return sock.sendMessage(from, {
+            return {
                 text: '⚠️ Please *reply* to the message you want to delete.\n\n🧾 Usage: `!delete`'
-            }, { quoted: msg });
+            };
         }
 
         try {
@@ -54,15 +48,11 @@ module.exports = {
                 }
             });
 
-            await sock.sendMessage(from, {
-                text: '🗑️ Message deleted successfully.'
-            }, { quoted: msg });
+            return { text: '🗑️ Message deleted successfully.' };
 
         } catch (err) {
             console.error('❌ Delete failed:', err);
-            await sock.sendMessage(from, {
-                text: '❌ Failed to delete the message. Please try again.'
-            }, { quoted: msg });
+            return { text: '❌ Failed to delete the message. Please try again.' };
         }
     }
 };

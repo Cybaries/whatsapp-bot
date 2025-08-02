@@ -1,3 +1,5 @@
+const { getBotId } = require('../Handlers/connection')
+
 module.exports = {
     config: {
         command: 'kick',
@@ -8,14 +10,12 @@ module.exports = {
         dm: false
     },
 
-    handler: async (sock, from, input, msg) => {
+    handler: async (sock, from, input, msg, meta) => {
         const isGroup = from.endsWith('@g.us');
         const sender = msg.key.participant || msg.key.remoteJid;
 
         if (!isGroup) {
-            return sock.sendMessage(from, {
-                text: '❌ This command can only be used in groups.'
-            }, { quoted: msg });
+            return { text: '❌ This command can only be used in groups.' };
         }
 
         const groupMetadata = await sock.groupMetadata(from);
@@ -26,20 +26,16 @@ module.exports = {
             .map(p => p.id);
 
         const isUserAdmin = admins.includes(sender);
-        const botFullId = BOT_ID; // e.g. 91xxxxx:94@s.whatsapp.net
+        const botFullId = getBotId(); // e.g. 91xxxxx:94@s.whatsapp.net
         const botId = botFullId.split(':')[ 0 ]; // e.g. 91xxxxx
         const isBotAdmin = admins.includes(`${botId}@s.whatsapp.net`);
 
         if (!isUserAdmin) {
-            return sock.sendMessage(from, {
-                text: '❌ Only group admins can use this command.'
-            }, { quoted: msg });
+            return { text: '❌ Only group admins can use this command.' };
         }
 
         if (!isBotAdmin) {
-            return sock.sendMessage(from, {
-                text: '❌ I need to be an admin to kick members.'
-            }, { quoted: msg });
+            return { text: '❌ I need to be an admin to kick members.' };
         }
 
         // Extract target user from mention or reply
@@ -47,25 +43,23 @@ module.exports = {
         const targetId = ctx?.mentionedJid?.[ 0 ] || ctx?.participant;
 
         if (!targetId) {
-            return sock.sendMessage(from, {
+            return {
                 text: '⚠️ Please tag or reply to the user you want to kick.\n\n🧾 Usage: `!kick @user` or reply with `!kick`'
-            }, { quoted: msg });
+            };
         }
 
-        const normalizedTarget = targetId.split('@')[ 0 ]; // e.g. 91xxxxx
+        const normalizedTarget = targetId.split('@')[ 0 ];
 
         if (normalizedTarget === botId) {
-            return await sock.sendMessage(from, {
-                text: `🙅‍♂️ I can't kick myself!`
-            });
+            return { text: `🙅‍♂️ I can't kick myself!` };
         }
 
         // 🔨 Attempt to remove user
         await sock.groupParticipantsUpdate(from, [ targetId ], 'remove');
-        await sock.sendMessage(from, {
+
+        return {
             text: `👢 Removed <@${normalizedTarget}> from the group.`,
             mentions: [ targetId ]
-        });
-
+        };
     }
 };
