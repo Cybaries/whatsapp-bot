@@ -16,6 +16,9 @@ const {
     setRestartCallback,
 } = require('./messageHandler');
 
+const { getDb } = require('./mongo');
+const { startPokemonSpawner, isSpawnerRunning } = require('../utils/pokemonSpawner');
+
 
 let latestQR = '';
 let isReady = false;
@@ -32,6 +35,18 @@ function getBotId() {
 
 function getLatestQR() {
     return latestQR;
+}
+
+async function checkAndStartSpawner(sock) {
+    const db = getDb();
+    const settingsCol = db.collection('pokemon_settings');
+    const enabledCount = await settingsCol.countDocuments({ enabled: true });
+    if (enabledCount > 0 && !isSpawnerRunning()) {
+        console.log('⚡ Detected enabled groups. Starting Pokémon spawner...');
+        startPokemonSpawner(sock);
+    } else {
+        console.log('⚠️ No enabled Pokémon groups. Spawner not started.');
+    }
 }
 
 async function createConnection(mongo, restartCallback = () => { }) {
@@ -102,6 +117,7 @@ async function createConnection(mongo, restartCallback = () => { }) {
             setBotId(sock.user?.id);
             isReady = false;
             setBotReady(true);
+            await checkAndStartSpawner(sock);
             setTimeout(() => { isReady = true; }, 5000);
             latestQR = '';
 

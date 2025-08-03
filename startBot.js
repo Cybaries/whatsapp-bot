@@ -5,9 +5,11 @@ const { createConnection } = require('./Handlers/connection');
 const { logger } = require('./utils/logger');
 const { loadCommands } = require('./Handlers/commandHandler');
 
+let sock;
+
 async function startBot() {
     try {
-        await createConnection(mongo, startBot);
+        sock = await createConnection(mongo, startBot);
         logger.info('🤖 Bot started successfully.');
     } catch (e) {
         logger.error({ err: e }, '❌ Bot failed to start.');

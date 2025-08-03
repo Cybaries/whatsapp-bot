@@ -61,9 +61,10 @@ async function handleIncomingMessages(sock, messages) {
     logMessage({ from, isGroup, command: commandName, input: args.join(' '), userId: sender });
 
     try {
-        const response = await handler(sock, from, args.join(' '), msg, { sender, isGroup, command: config.command });
-        console.log(response);
-        await sendAndTrack(sock, from, response, sender, msg); // No need to manage LAST_REPLY_TIMES here
+        const result = await handler(sock, from, args.join(' '), msg, { sender, isGroup, command: config.command });
+        if (result && typeof result === 'object' && (result.text || result.image || result.document || result.video)) {
+            await sendAndTrack(sock, from, result, sender, msg);
+        }
     } catch (err) {
         logger.error({ err }, `❌ Error in command: ${commandName}`);
         await sendAndTrack(sock, from, { text: '⚠️ Error executing command.' }, sender, msg).catch(() => { });
