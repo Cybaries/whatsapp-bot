@@ -4,46 +4,27 @@ const { getCommand } = require('./commandHandler');
 const { sendAndTrack } = require('./SyncHandler');
 
 const PREFIX = '!';
-const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '15000');
+const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '15000')
 const ALLOWED_USERS = (process.env.ALLOWED_USERS || '').split(',').filter(Boolean);
 const ALLOWED_GROUPS = (process.env.ALLOWED_GROUPS || '').split(',').filter(Boolean);
 
-const userCooldowns = new Map();
 let botReady = false;
+function setBotReady(status) { botReady = status; }
+function isBotReady() { return botReady; }
 
-function setBotReady(status) {
-    botReady = status;
+let messageQueue = [];
+
+function enqueue(messageData) {
+    messageQueue.push(messageData);
 }
 
-function isBotReady() {
-    return botReady;
-}
+// Periodically process the queue
+setInterval(async () => {
+    if (!isBotReady() || messageQueue.length === 0) return;
 
-async function handleIncomingMessages(sock, messages) {
-    if (!isBotReady()) return;
-
-    const msg = messages[ 0 ];
-    const from = msg.key.remoteJid;
-    const isGroup = from.endsWith('@g.us');
-    const sender = msg.key.participant || msg.key.remoteJid;
-
-    if (!msg?.message || sender.endsWith('@g.us')) return;
-
-    const allowed = isGroup ? ALLOWED_GROUPS.includes(from) : ALLOWED_USERS.includes(from);
-    if (!allowed) return;
-
-    const text =
-        msg.message.conversation ||
-        msg.message?.extendedTextMessage?.text ||
-        msg.message?.imageMessage?.caption ||
-        '';
-
-    if (!text.startsWith(PREFIX)) return;
+    const { sock, msg, from, sender, text, isGroup } = messageQueue.shift();
 
     const [ commandName, ...args ] = text.slice(PREFIX.length).trim().split(/\s+/);
-    if (Date.now() - (userCooldowns.get(sender) || 0) < COOLDOWN_MS) return;
-    userCooldowns.set(sender, Date.now());
-
     const commandModule = getCommand(commandName);
     if (!commandModule) {
         await sendAndTrack(sock, from, { text: `❌ Unknown command: ${commandName}` }, sender, msg);
@@ -69,13 +50,35 @@ async function handleIncomingMessages(sock, messages) {
         logger.error({ err }, `❌ Error in command: ${commandName}`);
         await sendAndTrack(sock, from, { text: '⚠️ Error executing command.' }, sender, msg).catch(() => { });
     }
+
+}, COOLDOWN_MS);
+
+// Main handler that pushes messages to the queue
+async function handleIncomingMessages(sock, messages) {
+    if (!isBotReady()) return;
+    const msg = messages[ 0 ];
+    const from = msg.key.remoteJid;
+    const isGroup = from.endsWith('@g.us');
+    const sender = msg.key.participant || msg.key.remoteJid;
+
+    if (!msg?.message || sender.endsWith('@g.us')) return;
+
+    const allowed = isGroup ? ALLOWED_GROUPS.includes(from) : ALLOWED_USERS.includes(from);
+    if (!allowed) return;
+
+    const text =
+        msg.message.conversation ||
+        msg.message?.extendedTextMessage?.text ||
+        msg.message?.imageMessage?.caption ||
+        '';
+
+    if (!text.startsWith(PREFIX)) return;
+
+    enqueue({ sock, msg, from, sender, text, isGroup });
 }
 
 let restartCallback = () => { };
-
-function setRestartCallback(cb) {
-    restartCallback = cb;
-}
+function setRestartCallback(cb) { restartCallback = cb; }
 
 module.exports = {
     handleIncomingMessages,
