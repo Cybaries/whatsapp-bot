@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Adjust this absolute path based on your system
-const POKEMON_DIR = path.join(require('os').homedir(), 'Downloads', 'Pokemon');
+const POKEMON_DIR = path.join(__dirname, '..', 'Pokemon_Game_Resources');
 
 function getImageBufferById(filename) {
     return new Promise((resolve, reject) => {
