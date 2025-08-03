@@ -4,7 +4,7 @@ const axios = require('axios');
 
 module.exports = {
     config: {
-        command: 'myPokemon',
+        command: 'mypokemon',
         aliases: [ 'mypokemon', 'mypkmn' ],
         description: 'View the Pokémon you’ve caught!',
         usage: '!myPokemon',
