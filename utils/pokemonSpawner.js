@@ -34,7 +34,7 @@ async function loop() {
     const settingsCol = db.collection('pokemon_settings');
     const activeCol = db.collection('pokemon_active');
 
-    const pokemonFolder = path.join(process.env.HOME || process.env.USERPROFILE, 'Downloads', 'Pokemon');
+    const pokemonFolder = path.join(__dirname, '..', 'Pokemon_Game_Resources');
     const allFiles = fs.readdirSync(pokemonFolder).filter(f => f.endsWith('.png') || f.endsWith('.jpg'));
 
     if (allFiles.length === 0) {
