@@ -5,7 +5,11 @@
 
 version: 2
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # Example for npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "weekly"
+    # Set to 0 to disable automatic version updates, 
+    # keeping only security update PRs active
+    open-pull-requests-limit: 0   
